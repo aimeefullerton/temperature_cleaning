@@ -188,9 +188,6 @@ for(i in 4:(ncol(at.all.merged))){
 }
 dev.off()  
 
-
-
-
 # Getting first few years ready ####
 first <- read.csv(paste0(data.dir, "/Data_Raw_Sep2015/AllSnoqualmieSites_WaterAir.csv"), header = T)
 first$Date <- as.Date(first$Date, format = "%m/%d/%Y")
