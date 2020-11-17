@@ -3,11 +3,12 @@
 # Adapted from Colin Sowder's original functions
 
 
-# Read in and prepare file
+# Read in and prepare raw file exported directly from Onset
 prepare.file <- function(data.file, directory)
 {
 
   td <- read.csv(paste0(directory, "/", data.file), skip = 1, header = T, stringsAsFactors = F)[,2:3]
+
   colnames(td) = c("DateTime","Temp")
   td <- td[!is.na(td$Temp),] # remove any records of bad battery etc. important step!
   a <- substr(as.POSIXlt(td$DateTime[1], origin = "1970-01-01", format = "%m/%d/%Y"), 1, 2)
@@ -30,6 +31,24 @@ prepare.file <- function(data.file, directory)
   #rm(foo)
   
 return(td)
+}
+
+# Read in and prepare file with "Date", "Time", and "Temp"
+prepare.file2 <- function(data.file, directory)
+{
+  
+  td <- read.csv(paste0(directory, "/", data.file), header = T, stringsAsFactors = F)
+  td$Date <- as.POSIXlt(td$Date, origin = "1970-01-01", format = "%m/%d/%y")
+  td$DateTime <- paste(td$Date, td$Time)
+  td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format ="%Y-%m-%d %H:%M")
+  td <- td[, c("DateTime", "Temp", "Date", "Time")]
+  td$Date <- as.Date(td$Date)
+  
+  td <- td[!is.na(td$Temp),] # remove any records of bad battery etc. important step!
+  td <- td[!is.na(td$DateTime),]
+  td <- td[order(td$Date, td$Time),]
+
+  return(td)
 }
 
 # Plot time series
