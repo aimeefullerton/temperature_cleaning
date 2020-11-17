@@ -152,29 +152,38 @@ yy <- first.year + 1
 #wt.all$Time <- wt.all$Time / 2
 
 wt.all <- read.csv(paste0(data.dir, "/", watershed, ".wt.allyears.csv"), header = T)
-sites <- colnames(wt.all[3:ncol(wt.all)])
 wt.all$Date <- as.Date(wt.all$Date)
-
+sites <- colnames(wt.all[4:ncol(wt.all)])
+sites <- gsub("_.*","", sites)
+wt.all<- wt.all[,c("DateTime", "Date", "Time", sort(colnames(wt.all)[4:ncol(wt.all)]))]
 
 wt.yy <- read.csv(paste0(data.dir, "/Data_Cleaned_", yy, "/", watershed, ".wt.", yy, ".csv"), header = T)
 wt.yy$Date <- as.Date(wt.yy$Date)
+for(i in 4:ncol(wt.yy)){
+  cn <- colnames(wt.yy)[i]
+  colnames(wt.yy)[i] <- gsub("_.*","", cn)
+}
+wt.yy<- wt.yy[,c("DateTime", "Date", "Time", sort(colnames(wt.yy)[4:ncol(wt.yy)]))]
+
 
 # Merge this year with previous years
 thesites <- sort(intersect(sites, colnames(wt.yy)))
-wt.all.merged <- matrix(NA, nrow = nrow(wt.all) + nrow(wt.yy), ncol = (length(sites) + 2))
+wt.all.merged <- matrix(NA, nrow = nrow(wt.all) + nrow(wt.yy), ncol = (length(sites) + 3))
 wt.all.merged <- as.data.frame(wt.all.merged)
-colnames(wt.all.merged) <- c("Date", "Time", sites)
-wt.all.merged$Date <- as.Date("01/01/01", "%m/%d/%y")
+colnames(wt.all.merged) <- c("DateTime", "Date", "Time", sort(sites))
+wt.all.merged$Date <- as.Date("2000-01-01", "%Y-%m-%d")
 
 wt.all.merged[1:nrow(wt.all),] <- wt.all
+
 idx <- ((nrow(wt.all) + 1) : nrow(wt.all.merged))
 wt.all.merged$Date[idx] <- wt.yy$Date
 wt.all.merged$Time[idx] <- wt.yy$Time
-
+wt.all.merged$DateTime[idx] <- wt.yy$DateTime
 for(s in 1:length(thesites)){
   site <- thesites[s]
   wt.all.merged[idx, site] <- wt.yy[,site]
 }
+
 summary(wt.all.merged)
 plot(wt.all.merged$Date, wt.all.merged$D1, type = 'l')
 
@@ -184,7 +193,7 @@ write.csv(wt.all.merged, paste0(data.dir, "/", watershed, ".wt.allyears.csv"), r
 png(paste0(data.dir, "/", watershed, ".wt.allyears.png"), width = 16, height = 10, units = "in", res = 300)
 par(mfrow = c(6,8), las = 1, cex = 0.5)
 
-for(i in 3:(ncol(wt.all.merged))){
+for(i in 4:(ncol(wt.all.merged))){
   plot(wt.all.merged$Date, wt.all.merged[,i], type = 'l', ylim = c(-5, 25), main = colnames(wt.all.merged)[i], xlab = "", ylab = "")
 }
 dev.off()  
