@@ -1,5 +1,5 @@
 # Clean temperature data files to remove erroneous readings (e.g. from air, sediment, or ice)
-# Aimee H Fullerton, 16 November 2020
+# Aimee H Fullerton, 18 November 2020
 
 # Load functions
 source("code/cleaning_functions.R")

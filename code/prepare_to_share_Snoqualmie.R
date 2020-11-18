@@ -1,5 +1,5 @@
 # Get Snoqualmie watershed water temperature data ready to share on King County's website
-# Aimee H Fullerton, 16 November 2020
+# Aimee H Fullerton, 18 November 2020
 
 data.dir <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Hobonet/Data"
 DataYears<- 2012:2020

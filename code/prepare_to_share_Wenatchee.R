@@ -1,5 +1,5 @@
 # Get temperature data ready to share
-# Aimee H Fullerton, 16 November 2020
+# Aimee H Fullerton, 18 November 2020
 
 data.dir <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Wenatchee/NOAA-USFS"
 DataYears<- 2018:2020
