@@ -28,21 +28,27 @@ for(yy in c(DataYears[1] - 1, DataYears)){
 # Add time stamp column
 fncTimeStamp <- function(x){
   thehour <- floor(x)
-  theminutes <- rep("00", length.out = length(x))
+  theminutes <- substr(x%%2, 3, 3)
+  theminutes[theminutes == ""] <- "00"
+  theminutes[theminutes == "5"] <- "30"
   answer <- paste0(thehour, ":", theminutes, ":00 PDT")
   return(answer)
 }
+
 wtdat$Time2 <- fncTimeStamp(wtdat$Time)
+range(wtdat$Date[!is.na(wtdat$D1)])
 
 # Output individual site files
 for(site in sites){
   idx <- which(colnames(wtdat) == site)
-  td <- wtdat[,c("WaterYear", "Date", "Time2", site)]
+  td <- wtdat[,c("WaterYear", "Date", "Time", "Time2", site)]
+  td <- td[order(td$Date, td$Time),]
+  td <- td[,-3]
   colnames(td)[3] <- "Time"
   colnames(td)[4] <- "Temp_C"
   write.csv(td, paste0(data.dir1, "/Data2Share/NOAA-USFS_", site,".csv"), row.names = F, na = "")
 }  
 
-summary(td[td$WaterYear == 2020,]) #to examine
+summary(td[td$WaterYear == 2019,]) #to examine
 
 # end of script

@@ -11,10 +11,7 @@ nLeapYrs<- length(intersect(LeapYears, DataYears))
 file <- paste0(data.dir, "/snoqualmie.wt.allyears.csv")
 wtdat <- read.csv(file, header = T, stringsAsFactors = F)
 wtdat$Date <- as.Date(wtdat$Date)
-#sites <- c("C1", "E1", "D1", "G1", "F1", "F1.r", "I1", "L1", "L3", "B1", "L2", "X1", "C2", "MF2", "MF1", "MF4", "MF3", "MF5", "MF6",
-#           "MS5", "MS6", "MS9", "MS10", "MS10.r", "MS4", "NF3", "NF1", "NF2", "NF4", "R5b", "R5a", "R1", "R4", "R5c", "R2", "R3", 
-#           "SF3", "SF1", "SF2", "M1", "S1", "Y1", "K1", "MS8", "T2", "MS7", "T4", "T1")
-sites <- colnames(wtdat)[3:ncol(wtdat)]
+sites <- colnames(wtdat)[4:ncol(wtdat)]
 summary(wtdat)
 
 
@@ -66,21 +63,27 @@ for(yy in c(DataYears[1] - 1, DataYears)){
 # Add time stamp column
 fncTimeStamp <- function(x){
   thehour <- floor(x)
-  theminutes <- rep(c("30", "00"), length.out = length(x))
+  theminutes <- substr(x%%2, 3, 3)
+  theminutes[theminutes == ""] <- "00"
+  theminutes[theminutes == "5"] <- "30"
   answer <- paste0(thehour, ":", theminutes, ":00 PDT")
   return(answer)
 }
+
 wtdat$Time2 <- fncTimeStamp(wtdat$Time)
+range(wtdat$Date[!is.na(wtdat$D1)])
 
 # Output individual site files
 for(site in sites){
   idx <- which(colnames(wtdat) == site)
-  td <- wtdat[,c("WaterYear", "Date", "Time2", site)]
+  td <- wtdat[,c("WaterYear", "Date", "Time", "Time2", site)]
+  td <- td[order(td$Date, td$Time),]
+  td <- td[,-3]
   colnames(td)[3] <- "Time"
   colnames(td)[4] <- "Temp_C"
   write.csv(td, paste0(data.dir, "/Data2Share/NOAA_", site,".csv"), row.names = F, na = "")
 }  
 
-summary(td[td$WaterYear == 2020,]) #to examine
+summary(td[td$WaterYear == 2019,]) #to examine
 
 # end of script
