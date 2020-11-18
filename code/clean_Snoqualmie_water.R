@@ -143,15 +143,25 @@ write.csv(dat, paste0(data.dir, "/", cleaned.data.folder, "/", data.file), row.n
 # Merge with all other years ####
 yy <- first.year + 1
   
-#wt.all <- read.csv(paste0(data.dir, "/", "WT.2012-2019.csv"), header = T, row.names = 1)
-#sites <- c("C1", "E1", "D1", "G1", "F1", "F1.r", "I1", "L1", "L3", "B1", "L2", "X1", "C2",
+# wt.all <- read.csv(paste0(data.dir, "/", "WT.2012-2019.csv"), header = T, row.names = 1)
+# sites <- c("C1", "E1", "D1", "G1", "F1", "F1.r", "I1", "L1", "L3", "B1", "L2", "X1", "C2",
 #                "MF2", "MF1", "MF4", "MF3", "MF5", "MF6", "MS5", "MS6", "MS9", "MS10", "MS10.r",
 #                "MS4", "NF3", "NF1", "NF2", "NF4", "R5b", "R5a", "R1", "R4", "R5c", "R2", "R3",
 #                "SF3", "SF1", "SF2", "M1", "S1", "Y1", "K1", "MS8", "T2", "MS7", "T4", "T1")
-#colnames(wt.all)[3:ncol(wt.all)] <- sites
-#wt.all$Time <- wt.all$Time / 2
+# colnames(wt.all)[3:ncol(wt.all)] <- sites
+# wt.all$Time <- wt.all$Time / 2 - 0.5
+# # Add "DateTime" column
+# if(!"DateTime" %in% colnames(wt.all)){
+#   foo <- paste0(wt.all$Date, " ", sprintf("%02d", floor(wt.all$Time)), ":00")
+#   if(numdailyobs == 48) foo[seq(2, length(foo), 2)] <- gsub(":00", ":30", foo[seq(2, length(foo), 2)])
+#   wt.all$DateTime <- as.POSIXlt( foo, format = "%Y-%m-%d %H:%M")
+#   rm(foo)
+# }
+# wt.all <- wt.all[,c("DateTime", "Date", "Time", sites)]  
+# wt.all$DateTime <- as.character(wt.all$DateTime)
 
 wt.all <- read.csv(paste0(data.dir, "/", watershed, ".wt.allyears.csv"), header = T)
+
 wt.all$Date <- as.Date(wt.all$Date)
 sites <- colnames(wt.all[4:ncol(wt.all)])
 sites <- gsub("_.*","", sites)
@@ -183,6 +193,8 @@ for(s in 1:length(thesites)){
   site <- thesites[s]
   wt.all.merged[idx, site] <- wt.yy[,site]
 }
+
+wt.all.merged <- wt.all.merged[order(wt.all.merged$Date, wt.all.merged$Time),]
 
 summary(wt.all.merged)
 plot(wt.all.merged$Date, wt.all.merged$D1, type = 'l')

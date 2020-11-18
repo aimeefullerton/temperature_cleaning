@@ -174,6 +174,8 @@ for(s in 1:length(thesites)){
   site <- thesites[s]
   at.all.merged[idx, site] <- at.yy[,site]
 }
+
+at.all.merged <- at.all.merged[order(at.all.merged$Date, at.all.merged$Time),]
 summary(at.all.merged)
 plot(at.all.merged$Date, at.all.merged[,5], type = 'l')
 
