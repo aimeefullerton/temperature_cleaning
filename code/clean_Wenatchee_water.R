@@ -116,10 +116,15 @@ while(!is.null(i)){
   if(length(old.loggers) > 0){
     oldfile2keep <- choose.file("past.year")
   } else {
-    print("This site did not have a file last year. Choose the first file for the current year.")
-    oldfile2keep <- choose.file("current.year")
+    print("This site did not have a file last year.")
+    oldfile2keep <- NA
   }
-  newfile2keep <- choose.file("current.year")
+  if(length(new.loggers) > 0){
+    newfile2keep <- choose.file("current.year")
+  } else{
+    print("This site did not have a file this year.")
+    newfile2keep <- NA
+  }
   
   # Stitch together raw data from previous September with raw data from the current year
   if(!is.na(newfile2keep)[1] & !is.na(oldfile2keep)) dat <- get.complete.year(oldfile2keep, newfile2keep, first.year, numdailyobs, date.begin, date.end)
