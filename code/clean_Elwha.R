@@ -8,8 +8,8 @@ source("code/cleaning_functions.R")
 # Directories
 watershed <- "elwha"
 first.year <- 2019
-date.begin <- "-09-01"
-date.end <- "-08-31"
+date.begin <- "-08-01"
+date.end <- "-09-30"
 data.dir <- "/Users/aimee_fullerton/GitHub/Elwha_ST/data"
 raw.data.folder <- paste0(first.year + 1, "/data.raw")
 old.data.folder <- paste0(first.year, "/data.raw")
@@ -67,9 +67,9 @@ while(!is.null(i)){
   }
   
   # Stitch together raw data from previous September with raw data from the current year
-  if(!is.na(newfile2keep)[1] & !is.na(oldfile2keep)) dat <- get.complete.year(oldfile2keep, newfile2keep, first.year, numdailyobs, date.begin, date.end)
+  if(!is.na(newfile2keep)[1] & !is.na(oldfile2keep)[1]) dat <- get.complete.year(oldfile2keep, newfile2keep, first.year, numdailyobs, date.begin, date.end)
   # or clip the old or new year to boundary dates if only one year has data
-  if(is.na(newfile2keep)[1] & !is.na(oldfile2keep)) dat <- clip.single.file(oldfile2keep, first.year, numdailyobs, date.begin, date.end)
+  if(is.na(newfile2keep)[1] & !is.na(oldfile2keep)[1]) dat <- clip.single.file(oldfile2keep, first.year, numdailyobs, date.begin, date.end)
   if(is.na(oldfile2keep)[1] & !is.na(newfile2keep)[1]) dat <- clip.single.file(newfile2keep, first.year, numdailyobs, date.begin, date.end)
   
   # If there are multiple that need to be strung together:
