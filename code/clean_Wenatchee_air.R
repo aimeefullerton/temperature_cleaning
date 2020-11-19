@@ -2,6 +2,7 @@
 # Aimee H Fullerton, 16 November 2020
 
 # Load functions
+numdailyobs <- 24
 source("code/cleaning_functions.R")
 
 # Directories
@@ -9,7 +10,6 @@ watershed <- "wenatchee"
 first.year <- 2019
 date.begin <- "-09-01"
 date.end <- "-08-31"
-numdailyobs <- 24
 data.dir1 <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Wenatchee"
 data.dir2 <-  "NOAA-USFS" #"WDFW"
 data.dir <- paste0(data.dir1, "/", data.dir2)

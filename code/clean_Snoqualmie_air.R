@@ -2,6 +2,7 @@
 # Aimee H Fullerton, 18 November 2020
 
 # Load functions
+numdailyobs <- 48
 source("code/cleaning_functions.R")
 
 # Directories
@@ -9,7 +10,6 @@ watershed <- "snoqualmie"
 first.year <- 2019
 date.begin <- "-09-01"
 date.end <- "-08-31"
-numdailyobs <- 48
 data.dir <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Hobonet/Data"
 raw.data.folder <- paste0("Data_Raw_Sep", (first.year + 1), "/air")
 old.data.folder <- paste0("Data_Raw_Sep", first.year, "/air")

@@ -1,6 +1,8 @@
-# Clean temperature data files to remove erroneous readings (e.g. from air or ice)
+# Clean temperature data files to remove erroneous readings (e.g. from air, sediment, or ice)
+# Aimee H Fullerton, 18 November 2020
 
-# Functions
+# Load functions
+numdailyobs <- 24
 source("code/cleaning_functions.R")
 
 # Directories
@@ -8,7 +10,6 @@ watershed <- "elwha"
 first.year <- 2019
 date.begin <- "-09-01"
 date.end <- "-08-31"
-numdailyobs <- 24
 data.dir <- "/Users/aimee_fullerton/GitHub/Elwha_ST/data"
 raw.data.folder <- paste0(first.year + 1, "/data.raw")
 old.data.folder <- paste0(first.year, "/data.raw")
