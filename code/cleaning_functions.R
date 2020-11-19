@@ -2,6 +2,8 @@
 # Aimee H Fullerton, Last updated 16 November 2020
 # Adapted from Colin Sowder's original functions
 
+# Get number of observations per day
+numdailyobs <- get("numdailyobs")
 
 # Read in and prepare raw file exported directly from Onset
 prepare.file <- function(data.file, directory)
@@ -115,7 +117,7 @@ check.hobo <- function(hobo, response = "n")
   
   ###check the variance, for right now let's look at the smaller  of two day differences?
   temp <- hobo$Temp[!is.na(hobo$Temp)]
-  n <- length(temp) - 97
+  n <- length(temp) - (numdailyobs * 2) + 1
   day1 <- 0
   day2 <- 0
   smdiff <- 0
@@ -124,10 +126,10 @@ check.hobo <- function(hobo, response = "n")
   for (i in 1:n)
   {
     st <- i
-    ed <- i + 47
+    ed <- i + (numdailyobs - 1)
     day1 <- diff(range(temp[st:ed], na.rm = TRUE))
     st <- ed + 1
-    ed <- ed + 48
+    ed <- ed + numdailyobs
     day2 <- diff(range(temp[st:ed], na.rm = TRUE))
     smdiff <-  min(day1, day2)
     if(smdiff > bsmdiff)
@@ -154,7 +156,7 @@ plot.day <- function(hobo, day)
 plot.week <- function(hobo, day)
 {
   obs.week <- which(hobo$Date == day)[1]
-  obs.week <- seq(from = obs.week, length.out = (48*7), by = 1)
+  obs.week <- seq(from = obs.week, length.out = (numdailyobs * 7), by = 1)
   obs.week <- intersect(obs.week, obs.week[1]:length(hobo$Temp))
   Temps <- hobo$Temp[obs.week]
   obs <- 1:length(Temps)
@@ -200,7 +202,7 @@ choose.file <- function(theyear = "current.year")
 }
 
 # Clip a single file to the date endpoints specified and format
-clip.single.file <- function(myfile, first.year, numdailyobs = 48, date.begin = "-09-01", date.end = "-08-31")
+clip.single.file <- function(myfile, first.year, numdailyobs, date.begin = "-09-01", date.end = "-08-31")
 {
   
   # Clip dataset to correct dates
@@ -241,7 +243,7 @@ clip.single.file <- function(myfile, first.year, numdailyobs = 48, date.begin = 
 }
 
 # Stitch together raw data from this year and raw data from previous September
-get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyobs = 48, date.begin = "-09-01", date.end = "-08-31")
+get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyobs, date.begin = "-09-01", date.end = "-08-31")
 {
   
   ddate <- readline("What is the transition date (as yyyy-mm-dd)? Leave blank and hit enter if unknown: ")
@@ -503,7 +505,7 @@ clean.range <- function(hobo, start.date = NULL, end.date = NULL, close.site = N
     if(is.null(close.site) == F)
     {
       fr.week <- which(close.site$Date == cand.date)[1]
-      fr.week <- seq(from = fr.week, length.out = (48 * 7), by = 1)
+      fr.week <- seq(from = fr.week, length.out = (numdailyobs * 7), by = 1)
       fr.week <- intersect(fr.week, fr.week[1]:length(close.site$Temp))
       lines(1:length(fr.week), close.site$Temp[fr.week], col = 'red')
     }
@@ -518,13 +520,13 @@ clean.range <- function(hobo, start.date = NULL, end.date = NULL, close.site = N
   while(is.null(first.obs))
   {
     obs.week <- which(hobo$Date == start.date)[1]
-    obs.week <- seq(from = obs.week, length.out = (48 * 7), by = 1)
+    obs.week <- seq(from = obs.week, length.out = (numdailyobs * 7), by = 1)
     obs.week <- intersect(obs.week, obs.week[1]:length(hobo$Temp))
     plot(obs.week, hobo$Temp[obs.week], xlab = "Observation number", ylab = "Temperature (C)", main = "Choose the first invalid temperature")
     if(is.null(close.site) == F)
     {
       fr.week <- which(close.site$Date == cand.date)[1]
-      fr.week <- seq(from = fr.week, length.out = (48 * 7), by = 1)
+      fr.week <- seq(from = fr.week, length.out = (numdailyobs * 7), by = 1)
       fr.week <- intersect(fr.week, fr.week[1]:length(close.site$Temp))
       lines(obs.week, close.site$Temp[fr.week], col = 'red')
     }
@@ -553,7 +555,7 @@ clean.range <- function(hobo, start.date = NULL, end.date = NULL, close.site = N
     if(is.null(close.site) == F)
     {
       fr.week <- which(close.site$Date == cand.date)[1]
-      fr.week <- seq(from = fr.week, length.out = (48 * 7), by = 1)
+      fr.week <- seq(from = fr.week, length.out = (numdailyobs * 7), by = 1)
       fr.week <- intersect(fr.week, fr.week[1]:length(close.site$Temp))
       lines(1:length(fr.week), close.site$Temp[fr.week], col = 'red')
     }
@@ -568,13 +570,13 @@ clean.range <- function(hobo, start.date = NULL, end.date = NULL, close.site = N
   while(is.null(last.obs))
   {
     obs.week <- which(hobo$Date == end.date)[1]
-    obs.week <- seq(from = obs.week, length.out = (48 * 7), by = 1)
+    obs.week <- seq(from = obs.week, length.out = (numdailyobs * 7), by = 1)
     obs.week <- intersect(obs.week, obs.week[1]:length(hobo$Temp))
     plot(obs.week, hobo$Temp[obs.week], xlab = "Observation number", ylab = "Temperature (C)", main = "Choose the last invalid temperature")
     if(is.null(close.site) == F)
     {
       fr.week <- which(close.site$Date == cand.date)[1]
-      fr.week <- seq(from = fr.week, length.out = (48 * 7), by = 1)
+      fr.week <- seq(from = fr.week, length.out = (numdailyobs * 7), by = 1)
       fr.week <- intersect(fr.week, fr.week[1]:length(close.site$Temp))
       lines(obs.week, close.site$Temp[fr.week], col = 'red')
     }
@@ -637,13 +639,13 @@ read.hobo <- function(filename)
 remove.na <- function(hobo)
 {
   hobo2 <- hobo[which(is.na(hobo$Temp) == FALSE),]
-  ###check 48 obs/day except on enddates
+  ###check obs/day except on enddates
   dates <- unique(hobo2$Date)
   end.dates <- c(hobo2$Date[1], hobo2$Date[length(hobo2$Temp)])
   dates.check <- setdiff(dates, end.dates)
   for(i in dates.check)
   {
-    if(length(which(hobo2$Date == i)) != 48)
+    if(length(which(hobo2$Date == i)) != numdailyobs)
     {
       cat("There is an error on day", i, "\n")
       cat("Returning original hobo \n")
