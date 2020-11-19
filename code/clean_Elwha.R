@@ -9,10 +9,10 @@ first.year <- 2019
 date.begin <- "-09-01"
 date.end <- "-08-31"
 numdailyobs <- 24
-data.dir <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Elwha.ST/data"
-raw.data.folder <- paste0("data.raw_", (first.year + 1))
-old.data.folder <- paste0("data.raw", first.year)
-cleaned.data.folder <- paste0("data.cleaned_", (first.year + 1))
+data.dir <- "/Users/aimee_fullerton/GitHub/Elwha_ST/data"
+raw.data.folder <- paste0(first.year + 1, "/data.raw")
+old.data.folder <- paste0(first.year, "/data.raw")
+cleaned.data.folder <- paste0(first.year + 1, "/data.cleaned")
 
 
 # Clean the data ####
@@ -29,8 +29,8 @@ while(!is.null(i)){
   # Prepare possible files to use
   old.loggers <- oldfiles[grep(paste0(site, "_"), oldfiles)]
   new.loggers <- thefiles[grep(paste0(site, "_"), thefiles)]
-  old.loggers <- old.loggers[which(gsub("_", "", substr(old.loggers,1,3)) == site)]
-  new.loggers <- new.loggers[which(gsub("_", "", substr(new.loggers,1,3)) == site)]
+  old.loggers <- old.loggers[grep(site, old.loggers)]
+  new.loggers <- new.loggers[grep(site, new.loggers)]
   cat("Last year's file(s): ", old.loggers, "\n")
   cat("This year's file(s): ", new.loggers, "\n")
   old.list <- new.list <- NULL
@@ -55,10 +55,15 @@ while(!is.null(i)){
   if(length(old.loggers) > 0){
     oldfile2keep <- choose.file("past.year")
   } else {
-    print("This site did not have a file last year. Choose the first file for the current year.")
-    oldfile2keep <- choose.file("current.year")
+    print("This site did not have a file last year.")
+    oldfile2keep <- NA
   }
-  newfile2keep <- choose.file("current.year")
+  if(length(new.loggers) > 0){
+    newfile2keep <- choose.file("current.year")
+  } else{
+    print("This site did not have a file this year.")
+    newfile2keep <- NA
+  }
   
   # Stitch together raw data from previous September with raw data from the current year
   if(!is.na(newfile2keep)[1] & !is.na(oldfile2keep)) dat <- get.complete.year(oldfile2keep, newfile2keep, first.year, numdailyobs, date.begin, date.end)
