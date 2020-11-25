@@ -15,6 +15,10 @@ raw.data.folder <- paste0(first.year + 1, "/data.raw")
 old.data.folder <- paste0(first.year, "/data.raw")
 cleaned.data.folder <- paste0(first.year + 1, "/data.cleaned")
 
+sites.attr <- read.csv("/Users/aimee_fullerton/GitHub/Elwha_ST/data/elwha.sites.attributed.csv", header = T)
+xx <- sites.attr$Site.Name; names(xx) <- sites.attr$SiteCode
+# get_value(sites, xx) # look up site name(s) based on (vector of) site codes
+
 
 # Clean the data ####
 (thefiles <- dir(paste0(data.dir, "/", raw.data.folder)))
@@ -140,10 +144,12 @@ for(i in 1:length(thefiles)){
   new.df <- merge(new.df, td[, c("DateTime", "Temp")], by = c("DateTime"), all.x = T)
   colnames(new.df)[i + 3] <- site.name
 }
-write.csv(new.df, paste0(data.dir, "/Data_Cleaned_", (first.year + 1), "/", watershed, ".wt.", (first.year + 1), ".csv"), row.names = F)
+if(first.year == 2018) colnames(new.df) <- c("DateTime", "Date", "Time", "BO1", "MS34", "MS25", "MS21", "FP28", "FP9", "IC2", "IC9", "LL1", "LR11", "LO1", "FP11", "FP10")
+if(first.year == 2019) colnames(new.df) <- c("DateTime", "Date", "Time", "MS25", "MS21", "MS39", "GR1", "HU1", "FP9", "IC2", "LR11", "FP11", "FP4", "MS11")
+write.csv(new.df, paste0(data.dir, "/", (first.year + 1), "/", watershed, ".wt.", (first.year + 1), ".csv"), row.names = F)
 
 # plot in individual panels to check
-png(paste0(data.dir, "/Data_Cleaned_", (first.year + 1), "/", watershed, ".wt.", (first.year + 1), ".png"), width = 16, height = 10, units = "in", res = 300)
+png(paste0(data.dir, "/", (first.year + 1), "/", watershed, ".wt.", (first.year + 1), ".png"), width = 16, height = 10, units = "in", res = 300)
 par(mfrow = c(6,8), las = 1, cex = 0.5)
 for(i in 4:(ncol(new.df))){
   plot(new.df$Date, new.df[,i], type = 'l', ylim = c(-5, 25), main = colnames(new.df)[i], xlab = "", ylab = "")
@@ -155,41 +161,57 @@ dev.off()
 # Merge with all other years ####
 yy <- first.year + 1
 
+## Reformatting previous file to merge with new ones (no need to run this going forward)
+#wt.all <- read.csv(paste0(data.dir, "/", watershed, ".wt.st.final.csv"), header = T, row.names = 1)
+#site.nums <- colnames(wt.all[3:ncol(wt.all)]); site.nums <- as.numeric(gsub("X", "", site.nums))
+#xx <- sites.attr$SiteCode; names(xx) <- sites.attr$Site.No; xx <- xx[order(as.numeric(names(xx)))]
+#sites <- get_value(site.nums, xx)
+#colnames(wt.all) <- c("Date", "Time", sites)
+#wt.all$Date <- as.Date(wt.all$Date)
+#wt.all$DateTime <- as.POSIXlt( paste0(wt.all$Date, " ", sprintf("%02d", floor(wt.all$Time)), ":00"), format = "%Y-%m-%d %H:%M")
+#wt.all <- wt.all[,c("DateTime", "Date", "Time", sort(sites))]
+#write.csv(wt.all, paste0(data.dir, "/", watershed, ".wt.allyears.csv"), row.names = F)
 wt.all <- read.csv(paste0(data.dir, "/", watershed, ".wt.allyears.csv"), header = T)
-sites <- colnames(wt.all[3:ncol(wt.all)])
 wt.all$Date <- as.Date(wt.all$Date)
 
-
-wt.yy <- read.csv(paste0(data.dir, "/Data_Cleaned_", yy, "/", watershed, ".wt.", yy, ".csv"), header = T)
+wt.yy <- read.csv(paste0(data.dir, "/", yy, "/", watershed, ".wt.", yy, ".csv"), header = T)
 wt.yy$Date <- as.Date(wt.yy$Date)
 
 # Merge this year with previous years
-thesites <- sort(intersect(sites, colnames(wt.yy)))
-wt.all.merged <- matrix(NA, nrow = nrow(wt.all) + nrow(wt.yy), ncol = (length(sites) + 2))
-wt.all.merged <- as.data.frame(wt.all.merged)
-colnames(wt.all.merged) <- c("Date", "Time", sites)
-wt.all.merged$Date <- as.Date("01/01/01", "%m/%d/%y")
+oldsites <- colnames(wt.all[4:ncol(wt.all)])
+yysites <- colnames(wt.yy[4:ncol(wt.yy)])
+newsites <- yysites[!yysites %in% oldsites]
+get_value(yysites, xx) # to check
 
-wt.all.merged[1:nrow(wt.all),] <- wt.all
+wt.all.merged <- matrix(NA, nrow = nrow(wt.all) + nrow(wt.yy), ncol = (length(oldsites) + length(newsites) + 3))
+wt.all.merged <- as.data.frame(wt.all.merged)
+colnames(wt.all.merged) <- c("DateTime", "Date", "Time", oldsites, newsites)
+
+wt.all.merged[1:nrow(wt.all),oldsites] <- wt.all[,oldsites]
+wt.all.merged[1:nrow(wt.all), 1:3] <- wt.all[,1:3]
+wt.all.merged$Date <- as.Date(wt.all.merged$Date, origin = "1970-01-01")
+
 idx <- ((nrow(wt.all) + 1) : nrow(wt.all.merged))
+wt.all.merged$DateTime[idx] <- wt.yy$DateTime
 wt.all.merged$Date[idx] <- wt.yy$Date
 wt.all.merged$Time[idx] <- wt.yy$Time
-
-for(s in 1:length(thesites)){
-  site <- thesites[s]
-  wt.all.merged[idx, site] <- wt.yy[,site]
+for(s in 1:length(yysites)){
+  site <- yysites[s]
+  wt.all.merged[idx, site] <- as.numeric(wt.yy[,site])
 }
+wt.all.merged <- wt.all.merged[,c("DateTime", "Date", "Time", sort(c(oldsites, newsites)))]
 summary(wt.all.merged)
-plot(wt.all.merged$Date, wt.all.merged$D1, type = 'l')
+plot(wt.all.merged$Date, wt.all.merged$MS11, type = 'l')
 
+wt.all.merged <- unique(wt.all.merged)
 write.csv(wt.all.merged, paste0(data.dir, "/", watershed, ".wt.allyears.csv"), row.names = F)
 
 # plot in individual panels to check
-png(paste0(data.dir, "/", watershed, ".wt.allyears.png"), width = 16, height = 10, units = "in", res = 300)
-par(mfrow = c(6,8), las = 1, cex = 0.5)
+png(paste0(data.dir, "/", watershed, ".wt.allyears.png"), width = 19, height = 12, units = "in", res = 300)
+par(mfrow = c(7,11), las = 1, cex = 0.5)
 
-for(i in 3:(ncol(wt.all.merged))){
-  plot(wt.all.merged$Date, wt.all.merged[,i], type = 'l', ylim = c(-5, 25), main = colnames(wt.all.merged)[i], xlab = "", ylab = "")
+for(i in 4:(ncol(wt.all.merged))){
+  plot(wt.all.merged$Date, wt.all.merged[,i], type = 'l', ylim = c(-5, 25), main = get_value(colnames(wt.all.merged)[i], xx), xlab = "", ylab = "")
 }
 dev.off()  
 
