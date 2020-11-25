@@ -622,6 +622,12 @@ remove.points <- function(hobo)
 }
 
 
+# Lookup values using named vectors:
+get_value <- function(mykey, mylookupvector){
+  myvalue <- mylookupvector[mykey]
+  myvalue <- unname(myvalue)
+  return(myvalue)
+}
 
 # No longer used:
 
