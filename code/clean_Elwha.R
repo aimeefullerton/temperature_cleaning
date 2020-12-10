@@ -1,5 +1,5 @@
 # Clean temperature data files to remove erroneous readings (e.g. from air, sediment, or ice)
-# Aimee H Fullerton, 18 November 2020
+# Aimee H Fullerton, 9 December 2020
 
 # Load functions
 numdailyobs <- 24
@@ -11,11 +11,13 @@ first.year <- 2019
 date.begin <- "-08-01"
 date.end <- "-09-30"
 data.dir <- "/Users/aimee_fullerton/GitHub/Elwha_ST/data"
+data.dir2 <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Elwha.ST/data_from_George"
 raw.data.folder <- paste0(first.year + 1, "/data.raw")
 old.data.folder <- paste0(first.year, "/data.raw")
 cleaned.data.folder <- paste0(first.year + 1, "/data.cleaned")
+cleaned.data.folder2 <- "found_data_cleaned"
 
-sites.attr <- read.csv("/Users/aimee_fullerton/GitHub/Elwha_ST/data/elwha.sites.attributed.csv", header = T)
+sites.attr <- read.csv(paste0(data.dir, "/elwha.sites.attributed.csv"), header = T)
 xx <- sites.attr$Site.Name; names(xx) <- sites.attr$SiteCode
 # get_value(sites, xx) # look up site name(s) based on (vector of) site codes
 
@@ -111,7 +113,7 @@ while(!is.null(i)){
 
 
 
-# Organize data as matrix with Date and Site columns; NAs where no data ####
+# Organize current year's data as matrix with Date and Site columns; NAs where no data ####
 # helpful for use in SSN models
 (thefiles <- dir(paste0(data.dir, "/", cleaned.data.folder)))
 
@@ -156,13 +158,11 @@ for(i in 4:(ncol(new.df))){
 }
 dev.off()  
 
-
-
-# Merge with all other years ####
+# Merge current year with all other years ####
 yy <- first.year + 1
 
 ## Reformatting previous file to merge with new ones (no need to run this going forward)
-#wt.all <- read.csv(paste0(data.dir, "/", watershed, ".wt.st.final.csv"), header = T, row.names = 1)
+#wt.all <- read.csv(paste0(data.dir, "/", watershed, ".st.final.csv"), header = T, row.names = 1)
 #site.nums <- colnames(wt.all[3:ncol(wt.all)]); site.nums <- as.numeric(gsub("X", "", site.nums))
 #xx <- sites.attr$SiteCode; names(xx) <- sites.attr$Site.No; xx <- xx[order(as.numeric(names(xx)))]
 #sites <- get_value(site.nums, xx)
@@ -208,13 +208,211 @@ write.csv(wt.all.merged, paste0(data.dir, "/", watershed, ".wt.allyears.csv"), r
 
 # plot in individual panels to check
 png(paste0(data.dir, "/", watershed, ".wt.allyears.png"), width = 19, height = 12, units = "in", res = 300)
-par(mfrow = c(7,11), las = 1, cex = 0.5)
+par(mfrow = c(8,10), las = 1, cex = 0.5)
 
 for(i in 4:(ncol(wt.all.merged))){
-  plot(wt.all.merged$Date, wt.all.merged[,i], type = 'l', ylim = c(-5, 25), main = get_value(colnames(wt.all.merged)[i], xx), xlab = "", ylab = "")
+  
+  if(any(!is.na(wt.all.merged[,i]))) plot(wt.all.merged$DateTime, wt.all.merged[,i], type = 'l', ylim = c(-5, 25), main = get_value(colnames(wt.all.merged)[i], xx), xlab = "", ylab = "")
 }
 dev.off()  
 
+# plot sites with best data
+png(paste0(data.dir, "/", watershed, ".sites_with_best_data.png"), width = 10, height = 6, units = "in", res = 300)
+par(mfrow = c(4,5), las = 1, cex = 0.5)
+
+sites2plot <- c("LR2", "IC2", "MS11", "MS5", "MS22", "MS20", "MS26", "MS27", "FP10", "FP2", "IC1", "IC9", "IC11", "IC12", "IC19", "LR11", "LR14", "LR22")
+for(i in 1:length(sites2plot)){
+  site <- sites2plot[i]
+  plot(wt.all.merged$DateTime, wt.all.merged[,site], type = 'l', ylim = c(-5, 25), main = get_value(site, xx), xlab = "", ylab = "")
+}
+dev.off()  
+
+
+# Read back in:
+td <- read.csv(paste0(data.dir, "/elwha.wt.allyears.csv"), header = T) 
+td$Date <- as.Date(td$Date)
+td$DateTime <- as.POSIXlt( td$DateTime, format = "%Y-%m-%d %H:%M")
+
+
+
+# Read in & clean old WDOE data and other "found" data ####
+data.dir <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Elwha.ST/data_from_George/found_data_Dec2020"
+cleaned.data.folder <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Elwha.ST/data_from_George/found_data_cleaned"
+
+thefiles <- dir(data.dir)
+for(f in 1:length(thefiles)){
+  ff <- thefiles[f]
+  if(length(grep(".txt", ff)) > 0){
+    site <- substr(ff, 1, 2)
+    year <- as.numeric(substr(ff, 11, 14))
+    if(year <2006) skiplines = 4 else skiplines = 12
+    td <- read.table(paste0(data.dir, "/", ff), skip = skiplines, header = F, fill = T)[,1:3]
+    colnames(td) <- c("Date", "Time", "Temp")
+    td$Date <- as.Date(td$Date, format = "%m/%d/%Y", origin = "1970")
+    td <- td[!is.na(td$Date),] # to remove trailing comment
+    write.csv(td, paste0(data.dir, "/", site, ".", year, ".DOE.csv"), row.names = F)
+  }
+}
+
+thefiles <- dir(data.dir)
+for(f in 1:length(thefiles)){
+  ff <- thefiles[f]
+  cat(ff,"\n")
+  if(length(grep(".csv", ff)) > 0){
+    site <- substr(ff, 1, 2)
+    year <- as.numeric(substr(ff, 4, 7))
+    td <- read.csv(paste0(data.dir, "/", ff), header = T)
+    if(is.na(year)) td$Date <- as.Date(td$Date, format = "%m/%d/%y") else td$Date <- as.Date(td$Date)
+    #td$DateTime <- as.POSIXlt(strptime(paste(td$Date, td$Time), "%Y-%m-%d %I:%M %p"), format = "%H:%M")
+    #td$DateTime <- td$DateTime + 60*5
+    #td$DateTime <- as.POSIXlt(td$DateTime)
+    #td$Time <- td$DateTime$hour
+    td <- td[!is.na(td$Temp),]
+    dat <- td[, c("DateTime", "Date", "Time", "Temp")]
+    dat <- dat[dat$Temp < 30 & dat$Temp > 0,] #remove crazy weird readings
+    
+    # Check for flags
+    check.hobo(dat) 
+    plot.hobo(dat)
+    
+    # Proceed with cleaning the data
+    # note: deployment and recovery dates should already be dealt with from above stitching steps
+    dat <- clean.deployment(dat) #clip off data before deployment date
+    plot.hobo(dat)
+    dat <- clean.recovery(dat) #clip off data after recovery date
+    plot.hobo(dat)
+    thedirectory <- paste0(data.dir, "/", cleaned.data.folder) #for choosing nearby sites
+    dat <- clean.middle(dat, thedirectory)
+    
+    # Finalize, review, and save
+    plot(dat$DateTime, dat$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
+    summary(dat[!is.na(dat$Temp),])
+    
+    write.csv(dat, paste0(cleaned.data.folder, "/", ff), row.names = F)
+    
+  }
+}
+
+# Condense 15-min data to hourly
+thefiles <- dir(cleaned.data.folder)
+for(f in 1:length(thefiles)){
+  ff <- thefiles[f]
+  cat(ff,"\n")
+  if(length(grep(".csv", ff)) > 0){
+    year <- as.numeric(substr(ff, 4, 7))
+    if(!is.na(year)){
+      # read in
+      td <- read.csv(paste0(cleaned.data.folder, "/", ff), header = T)
+      td$Date <- as.Date(td$Date)
+      td$DateTime <- as.POSIXlt(td$DateTime, format = "%Y-%m-%d %H:%M")
+      
+      # summarize to hourly
+      foo <- tapply(td$Temp, list(td$Date, td$DateTime$hour), mean, na.rm = T)
+      dates <- NULL; for(i in 1:length(row.names(foo))) dates <- c(dates,rep(row.names(foo)[i], 24))
+      td.hourly <- cbind.data.frame("Date" = dates, "Time" = colnames(foo), "Temp" = c(t(foo)))
+      td.hourly <- td.hourly[!is.na(td.hourly$Temp),]
+      td.hourly$Time <- paste0(td.hourly$Time, ":00")
+      td.hourly$DateTime <- paste(td.hourly$Date, td.hourly$Time); td.hourly$DateTime <- as.POSIXlt( td.hourly$DateTime, format = "%Y-%m-%d %H:%M")
+      td.hourly <- td.hourly[, c("DateTime", "Date", "Time", "Temp")]
+      
+      write.csv(td.hourly, paste0(cleaned.data.folder, "/hourly_", ff), row.names = F)
+      #plot(td.hourly$DateTime, td.hourly$Temp, type = 'l')
+    }
+  }
+}
+
+#Everything except the DOE data have funky times that we need to correct
+thefiles <- c("IC1.csv", "IC11.csv", "IC12.csv", "IC9.csv", "LR11.csv", "LR14.csv", "LR2.csv", "LR22.csv", "SC6.csv", "SC26.csv")
+td <- read.csv(paste0(data.dir2, "/", cleaned.data.folder2, "/", thefiles[i]), header = T, stringsAsFactors = F)
+td$DateTime <- as.POSIXlt(td$DateTime, format = "%Y-%m-%d %I:%M:%S")
+td$DateTime <- as.POSIXlt(td$DateTime, format = "%Y-%m-%d %H:%M")
+td$Date <- as.Date(paste0(td$DateTime$year, "-", td$DateTime$mon, "-", td$DateTime$mday))
+
+
+
+## Merge into big temperature database
+wt.all <- read.csv("/users/aimee_fullerton/GitHub/Elwha_ST/data/elwha.wt.allyears.csv", header = T)
+wt.all$Date <- as.Date(wt.all$Date)
+wt.all$DateTime <- as.POSIXlt( wt.all$DateTime, format = "%Y-%m-%d %H:%M")
+
+# REALIZED THAT NOT ALL DATES ARE IN THIS FILE DUE TO NA RECORDS but need them there to fill in found data; this is the fix
+first.year <- "2000"; last.year <- "2020"
+date.begin <- "-07-01"; date.end <- "-10-01"
+dates <- seq(from = as.Date(paste0(first.year, date.begin)), to = as.Date(paste0(last.year, date.end)), by = 1)
+new.df <- data.frame(matrix(NA, nrow = length(dates) * numdailyobs, ncol = 2))
+colnames(new.df) <- c("Date", "Time")
+new.df$Date <- rep(dates, numdailyobs)
+new.df <- new.df[order(new.df$Date),]
+if(numdailyobs == 48){
+  new.df$Time <- rep(seq(0, 23.5, 0.5), length(dates))
+} else{
+  new.df$Time <- rep(seq(0, 23, 1), length(dates))
+}
+foo <- paste0(new.df$Date, " ", sprintf("%02d", floor(new.df$Time)), ":00")
+if(numdailyobs == 48) foo[seq(2, length(foo), 2)] <- gsub(":00", ":30", foo[seq(2, length(foo), 2)])
+new.df$DateTime <- as.POSIXlt( foo, format = "%Y-%m-%d %H:%M")
+row.names(new.df) <- NULL
+
+wt.all <- merge(new.df, wt.all[, c("DateTime", colnames(wt.all)[4:ncol(wt.all)])], by = c("DateTime"), all.x = T)
+write.csv(wt.all, paste0(data.dir, "/", watershed, ".wt.allyears.csv"), row.names = F)
+
+
+(thefiles <- dir(paste0(data.dir2, "/", cleaned.data.folder2)))
+for(i in 1:length(thefiles)){
+  site.name <- gsub("_.*","", thefiles[i])
+  if(site.name == "IC.DOE") site.name <- "IC2"
+  if(site.name == "LR.DOE") site.name <- "LR2"
+  if(length(grep(".csv", site.name)) > 0) site.name <- gsub(".csv", "", site.name)
+  td <- read.csv(paste0(data.dir2, "/", cleaned.data.folder2, "/", thefiles[i]), header = T, stringsAsFactors = F)
+  td$Date <- as.Date(td$Date)
+  td$DateTime <- as.POSIXlt( td$DateTime, format = "%Y-%m-%d %H:%M")
+  plot(td$DateTime, td$Temp, type = 'l')
+  
+  wt.all <- merge(wt.all, td[, c("DateTime", "Temp")], by = c("DateTime"), all.x = T)
+  #this adds the column to the right of existing data with correct dates/times; next have to merge it into the existing column
+  c <- which(colnames(wt.all) == site.name)
+  wt.all[,c][is.na(wt.all[,c]) & !is.na(wt.all[,ncol(wt.all)])] <- wt.all[,ncol(wt.all)][is.na(wt.all[,c]) & !is.na(wt.all[,ncol(wt.all)])] 
+  plot(wt.all$DateTime, wt.all[,c], type = 'l') #to check
+  lines(wt.all$DateTime, wt.all$Temp, col = 2) #to check
+  wt.all <- wt.all[,-ncol(wt.all)] #remove temporary column
+}
+write.csv(wt.all, paste0(data.dir, "/", watershed, ".wt.allyears.csv"), row.names = F)
+
+# For data from John McMillan - had weird time stamp problem that had to be fixed in Excel
+jm <- read.csv(paste0(data.dir2, "/found_data_Dec2020/McMillan_temperature_data_notcleaned.csv"), header = T)
+colnames(jm)[13] <- "MA1"
+colnames(jm)[12] <- "FP22" #SC16, data is already in the database though
+colnames(jm)[14] <- "FP17" #SC26, ditto
+jm$Date <- as.Date(jm$Date, format = "%m/%d/%y")
+jm$DateTime <- as.POSIXlt(paste(jm$Date, jm$Time), format = "%Y-%m-%d %I:%M:%S %p")
+
+for(i in 1:(ncol(jm) - 1)){
+  site.name <- colnames(jm)[i]
+  dat <- jm[,c("DateTime", site.name)]
+  colnames(dat)[2] <- "Temp"
+
+  # Clean the data
+  plot.hobo(dat)
+  dat <- clean.deployment(dat) #clip off data before deployment date
+  plot.hobo(dat)
+  dat <- clean.recovery(dat) #clip off data after recovery date
+  plot.hobo(dat)
+  dat <- clean.middle(dat)
+  
+  # Finalize, review, and put back into dataframe
+  plot.hobo(dat)
+  summary(dat[!is.na(dat$Temp),])
+  jm[,i] <- dat$Temp
+  
+  wt.all <- merge(wt.all, dat, by = c("DateTime"), all.x = T)
+  #this adds the column to the right of existing data with correct dates/times; next have to merge it into the existing column
+  c <- which(colnames(wt.all) == site.name)
+  wt.all[,c][is.na(wt.all[,c]) & !is.na(wt.all[,ncol(wt.all)])] <- wt.all[,ncol(wt.all)][is.na(wt.all[,c]) & !is.na(wt.all[,ncol(wt.all)])] 
+  plot(wt.all$DateTime, wt.all[,c], type = 'l') #to check
+  lines(wt.all$DateTime, wt.all$Temp, col = 2) #to check
+  wt.all <- wt.all[,-ncol(wt.all)] #remove temporary column
+}
+write.csv(wt.all, paste0(data.dir, "/", watershed, ".wt.allyears.csv"), row.names = F)
 
 
 # OLDER VERSION: #####
