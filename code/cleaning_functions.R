@@ -461,13 +461,13 @@ clean.recovery <- function(hobo, recover.date = NULL)
 }
 
 # Clean middle stretches and specific values; calls 'clean.range' and 'remove.points'
-clean.middle <- function(hobo, thedirectory)
+clean.middle <- function(hobo, thedirectory = NA)
 {
   ans <- readline("Do any data in the middle need to be cleaned? (y or n) ")
   if(ans == "y"){ 
     ans <- readline("Clip a whole section out? (y or n) ") 
     while(ans == "y"){  #helps clip out places that obviously came out of the water
-      print(dir(thedirectory))
+      if(!is.na(thedirectory)) print(dir(thedirectory))
       ans <- as.numeric(readline("Choose a nearby location that has already been cleaned (1, 2, 3, ...) or use 0 if no sites qualify. "))
       if(ans > 0){ # use a nearby site to help see if the 'anomaly' is reasonable
         near.file <- dir(thedirectory)[ans]
@@ -623,7 +623,8 @@ remove.points <- function(hobo)
 
 
 # Lookup values using named vectors:
-get_value <- function(mykey, mylookupvector){
+get_value <- function(mykey, mylookupvector)
+{
   myvalue <- mylookupvector[mykey]
   myvalue <- unname(myvalue)
   return(myvalue)
