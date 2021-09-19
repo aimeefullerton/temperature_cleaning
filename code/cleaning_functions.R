@@ -353,7 +353,7 @@ get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyob
   # NAs might happen if there was a bad battery warning.
   
   } else {
-    first.date <- newfile2keep$DateTime[first.obs]
+    first.date <- newfile2keep$DateTime[1]
     file2keep <- newfile2keep[newfile2keep$DateTime >= first.date,]
     file2keep <- file2keep[order(file2keep$Date, file2keep$Time),]
     file2keep <- file2keep[, c("DateTime", "Date", "Time", "Temp")]
