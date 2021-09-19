@@ -262,14 +262,15 @@ get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyob
   last.obs <- NULL
   first.obs <- NULL
   # Error handling
-  if(!ddate %in% oldfile2keep$Date){
-    last.obs <- which(oldfile2keep$DateTime == max(oldfile2keep$DateTime, na.rm = T))
-    #stop("Error: The selected date does not occur in the first dataset. Examine data to see if there is a big gap.")
-  }
-  if(!ddate %in% newfile2keep$Date){
-    first.obs <- which(newfile2keep$DateTime == min(newfile2keep$DateTime, na.rm = T)  )
-    #stop("Error: The selected date does not occur in the second dataset. Examine data to see if there is a big gap.")
-  }
+  if(nrow(oldfile2keep) > 0) { #skip all below if this file has no records
+    if(!ddate %in% oldfile2keep$Date){
+      last.obs <- which(oldfile2keep$DateTime == max(oldfile2keep$DateTime, na.rm = T))
+      #stop("Error: The selected date does not occur in the first dataset. Examine data to see if there is a big gap.")
+    }
+    if(!ddate %in% newfile2keep$Date){
+      first.obs <- which(newfile2keep$DateTime == min(newfile2keep$DateTime, na.rm = T))
+      #stop("Error: The selected date does not occur in the second dataset. Examine data to see if there is a big gap.")
+    } 
   
   # Create empty dataframe with all dates/times
   dates <- seq(from = as.Date(paste0(first.year, date.begin)), to = as.Date(paste0(first.year + 1, date.end)), by = 1)
@@ -279,7 +280,7 @@ get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyob
   file2keep <- file2keep[order(file2keep$Date),]
   if(numdailyobs == 48){
     file2keep$Time <- rep(seq(0, 23.5, 0.5), length(dates))
-  } else{
+  } else if(numdailyobs == 24){
     file2keep$Time <- rep(seq(0, 23, 1), length(dates))
   }
   foo <- paste0(file2keep$Date, " ", sprintf("%02d", floor(file2keep$Time)), ":00")
@@ -350,7 +351,15 @@ get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyob
   file2keep <- file2keep[order(file2keep$Date, file2keep$Time),]
   file2keep <- file2keep[, c("DateTime", "Date", "Time", "Temp")]
   # NAs might happen if there was a bad battery warning.
-
+  
+  } else {
+    first.date <- newfile2keep$DateTime[first.obs]
+    file2keep <- newfile2keep[newfile2keep$DateTime >= first.date,]
+    file2keep <- file2keep[order(file2keep$Date, file2keep$Time),]
+    file2keep <- file2keep[, c("DateTime", "Date", "Time", "Temp")]
+  } #END empty oldfile2keep
+  
+  
   # Plot and print diagnostics
   plot(file2keep$Date, file2keep$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
   print(summary(file2keep[!is.na(file2keep$Temp),]))
