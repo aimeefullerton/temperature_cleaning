@@ -7,7 +7,7 @@ source("code/cleaning_functions.R")
 
 # Directories
 watershed <- "wenatchee"
-first.year <- 2019
+first.year <- 2020
 date.begin <- "-09-01"
 date.end <- "-08-31"
 data.dir1 <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Wenatchee"
@@ -16,10 +16,15 @@ data.dir <- paste0(data.dir1, "/", data.dir2)
 raw.data.folder <- paste0("Data_Raw_Sep", (first.year + 1), "/air")
 old.data.folder <- paste0("Data_Raw_Sep", first.year, "/air")
 cleaned.data.folder <- paste0("Data_Cleaned_", (first.year + 1), "/air")
+if(!exists(cleaned.data.folder)){
+  dir.create(paste0(data.dir1, "/", data.dir2, "/Data_Cleaned_", (first.year + 1)))
+  dir.create(paste0(data.dir1, "/", data.dir2, "/Data_Cleaned_", (first.year + 1), "/air"))
+}
 
 # Clean the data ####
 (oldfiles <- dir(paste0(data.dir, "/", old.data.folder)))
 (thefiles <- dir(paste0(data.dir, "/", raw.data.folder)))
+oldfiles <- toupper(oldfiles); thefiles <- toupper(thefiles)
 
 i <- 1 # Look at 'thefiles' and pick sites one by one manually
 
@@ -30,8 +35,8 @@ while(!is.null(i)){
   cat(site, "\n")
   
   # Prepare possible files to use
-  old.loggers <- oldfiles[grep(paste0("_", site), oldfiles)]
-  new.loggers <- thefiles[grep(paste0("_", site), thefiles)]
+  old.loggers <- oldfiles[grep(site, oldfiles)]
+  new.loggers <- thefiles[grep(site, thefiles)]
   cat("Last year's file(s): ", old.loggers, "\n")
   cat("This year's file(s): ", new.loggers, "\n")
   old.list <- new.list <- NULL
