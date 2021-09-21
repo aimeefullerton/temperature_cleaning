@@ -42,7 +42,7 @@ while(!is.null(i)){
   # Read in and prepare data from previous year at this site
   if(length(old.loggers) > 0){
     for(j in 1:length(old.loggers)){
-      td <- prepare.file(data.file = old.loggers[j], directory = paste0(data.dir, "/", old.data.folder))
+      td <- prepare.file(data.file = old.loggers[j], directory = paste0(data.dir, "/", old.data.folder), numdailyobs = numdailyobs)
       old.list <- c(old.list, paste0(site, ".", j))
       assign(paste0(site, ".", j), td)
     }
@@ -50,7 +50,7 @@ while(!is.null(i)){
   
   # Read in and prepare data from current year at this site
   for(j in 1:length(new.loggers)){
-    td <- prepare.file(data.file = new.loggers[j], directory = paste0(data.dir, "/", raw.data.folder))
+    td <- prepare.file(data.file = new.loggers[j], directory = paste0(data.dir, "/", raw.data.folder), numdailyobs = numdailyobs)
     new.list <- c(new.list, paste0(site, ".", j + length(old.loggers)))
     assign(paste0(site, ".", j + length(old.loggers)), td)
   }
