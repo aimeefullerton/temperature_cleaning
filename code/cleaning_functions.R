@@ -6,11 +6,11 @@
 numdailyobs <- get("numdailyobs")
 
 # Read in and prepare raw file exported directly from Onset
-prepare.file <- function(data.file, directory)
+prepare.file1 <- function(data.file, directory)
 {
-
+  
   td <- read.csv(paste0(directory, "/", data.file), skip = 1, header = T, stringsAsFactors = F)[,2:3]
-
+  
   colnames(td) = c("DateTime","Temp")
   td <- td[!is.na(td$Temp),] # remove any records of bad battery etc. important step!
   a <- substr(as.POSIXlt(td$DateTime[1], origin = "1970-01-01", format = "%m/%d/%Y"), 1, 2)
@@ -24,15 +24,7 @@ prepare.file <- function(data.file, directory)
   td <- td[order(td$Date, td$Time),]
   td$Date <- as.Date(td$Date)
   
-  
-  #td <- td[,c(3,4,2)]
-  ## Add "DateTime" column back for better indexing and plotting
-  #foo <- paste0(td$Date, " ", sprintf("%02d", floor(td$Time)), ":00")
-  #if(numdailyobs == 48) foo[seq(2, length(foo), 2)] <- gsub(":00", ":30", foo[seq(2, length(foo), 2)])
-  #td$DateTime <- as.POSIXlt( foo, format = "%Y-%m-%d %H:%M")
-  #rm(foo)
-  
-return(td)
+  return(td)
 }
 
 # Read in and prepare file with "Date", "Time", and "Temp"
@@ -50,6 +42,57 @@ prepare.file2 <- function(data.file, directory)
   td <- td[!is.na(td$DateTime),]
   td <- td[order(td$Date, td$Time),]
 
+  return(td)
+}
+
+# Read in and prepare file; flexible format
+prepare.file <- function(data.file, directory, numdailyobs = 24)
+{
+  
+  worked <- NULL
+  worked <- tryCatch(
+    read.csv(paste0(directory, "/", data.file), skip = 1, header = T, stringsAsFactors = F)[,2:3], 
+    error = function(error_condition) {
+      return(NULL)}
+  )
+  
+  #raw Onset files
+  if(length(worked) > 0){
+    if(nchar(worked[1,1]) > 8){
+    td <- read.csv(paste0(directory, "/", data.file), skip = 1, header = T, stringsAsFactors = F)[,2:3]
+    colnames(td) = c("DateTime","Temp")
+    a <- substr(as.POSIXlt(td$DateTime[1], origin = "1970-01-01", format = "%m/%d/%Y"), 1, 2)
+    if(a < 19) date.format <- "%m/%d/%y" else date.format <- "%m/%d/%Y"
+    td$Date <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = date.format)
+    td$Date <- as.Date(td$Date)
+    if(nchar(worked[1,1]) > 14) td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = paste(date.format, "%I:%M:%S %p"))
+    if(nchar(worked[1,1]) <= 14) td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = paste(date.format, "%H:%M"))
+    }
+  }
+  #pre-processed files
+  if(length(worked) == 0 | (length(worked) > 0 & nchar(worked[1,1]) <= 8)) {
+    td <- read.csv(paste0(directory, "/", data.file), skip = 1, header = F, stringsAsFactors = F) 
+    colnames(td) = c("Date", "Time","Temp")
+    a <- substr(as.POSIXlt(td$Date[1], origin = "1970-01-01", format = "%m/%d/%Y"), 1, 2)
+    if(a < 19) date.format <- "%m/%d/%y" else date.format <- "%m/%d/%Y"
+    td$Date <- as.POSIXlt(td$Date, origin = "1970-01-01", format = date.format)
+    td$Date <- as.Date(td$Date)
+    td$DateTime <- paste(td$Date, td$Time)
+    td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = "%Y-%m-%d %H:%M")
+    #lubridate::parse_date_time(td$DateTime, orders = "%m-%d-%y %I:%M:%S %p")
+    td <- td[,c("DateTime", "Temp", "Date")]
+  }
+  
+  td$Time <- td$DateTime$hour
+  if(numdailyobs == 48){
+    evens <- seq(2, length(td$Time),2)
+    td$Time[evens] <- td$Time[evens] + 0.5
+  }
+  td <- td[!is.na(td$DateTime),]
+  td <- td[!is.na(td$Temp),] # remove any records of bad battery etc. important step!
+  td <- td[order(td$Date, td$Time),]
+  td <- td[, c("DateTime", "Date", "Time", "Temp")]
+  
   return(td)
 }
 
@@ -202,7 +245,7 @@ choose.file <- function(theyear = "current.year")
 }
 
 # Clip a single file to the date endpoints specified and format
-clip.single.file <- function(myfile, first.year, numdailyobs, date.begin = "-09-01", date.end = "-08-31")
+clip.single.file <- function(myfile, first.year, numdailyobs, date.begin = "-09-01", date.end = "-08-31", echo = F)
 {
   
   # Clip dataset to correct dates
@@ -234,10 +277,12 @@ clip.single.file <- function(myfile, first.year, numdailyobs, date.begin = "-09-
   # NAs might happen if there was a bad battery warning.
   
   # Plot and print diagnostics
-  plot(file2keep$Date, file2keep$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
-  print(summary(file2keep[!is.na(file2keep$Temp),]))
-  cat("number of records: ", nrow(file2keep), "\n")
-  cat("number of obs: ", nrow(file2keep[!is.na(file2keep$Temp),]), "\n")
+  if(echo == T){
+    plot(file2keep$Date, file2keep$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
+    print(summary(file2keep[!is.na(file2keep$Temp),]))
+    cat("number of records: ", nrow(file2keep), "\n")
+    cat("number of obs: ", nrow(file2keep[!is.na(file2keep$Temp),]), "\n")
+  }
   
   return(file2keep)
 }
@@ -245,33 +290,6 @@ clip.single.file <- function(myfile, first.year, numdailyobs, date.begin = "-09-
 # Stitch together raw data from this year and raw data from previous September
 get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyobs, date.begin = "-09-01", date.end = "-08-31")
 {
-  
-  ddate <- readline("What is the transition date (as yyyy-mm-dd)? Leave blank and hit enter if unknown: ")
-  if(ddate != ""){
-    ddate <- as.Date(ddate)
-  } else {
-    ddate <- max(oldfile2keep$Date) #if not known, assume the old logger was stopped when it was pulled out
-  }
-  
-  # Clip old and new datasets to correct dates
-  oldfile2keep <- oldfile2keep[oldfile2keep$Date >= as.Date(paste0(first.year, date.begin)) & oldfile2keep$Date <= ddate,]
-  oldfile2keep <- unique(oldfile2keep)
-  newfile2keep <- newfile2keep[newfile2keep$Date >= ddate & newfile2keep$Date <= as.Date(paste0(first.year + 1, date.end)),]
-  newfile2keep <- unique(newfile2keep)
-
-  last.obs <- NULL
-  first.obs <- NULL
-  # Error handling
-  if(nrow(oldfile2keep) > 0) { #skip all below if this file has no records
-    if(!ddate %in% oldfile2keep$Date){
-      last.obs <- which(oldfile2keep$DateTime == max(oldfile2keep$DateTime, na.rm = T))
-      #stop("Error: The selected date does not occur in the first dataset. Examine data to see if there is a big gap.")
-    }
-    if(!ddate %in% newfile2keep$Date){
-      first.obs <- which(newfile2keep$DateTime == min(newfile2keep$DateTime, na.rm = T))
-      #stop("Error: The selected date does not occur in the second dataset. Examine data to see if there is a big gap.")
-    } 
-  
   # Create empty dataframe with all dates/times
   dates <- seq(from = as.Date(paste0(first.year, date.begin)), to = as.Date(paste0(first.year + 1, date.end)), by = 1)
   file2keep <- data.frame(matrix(NA, nrow = length(dates) * numdailyobs, ncol = 3))
@@ -287,6 +305,40 @@ get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyob
   if(numdailyobs == 48) foo[seq(2, length(foo), 2)] <- gsub(":00", ":30", foo[seq(2, length(foo), 2)])
   file2keep$DateTime <- as.POSIXlt( foo, format = "%Y-%m-%d %H:%M")
   row.names(file2keep) <- NULL
+  
+  # Pick transition date for stitching together
+  ddate <- readline("What is the transition date (as yyyy-mm-dd)? Leave blank and hit enter if unknown: ")
+  if(ddate != ""){
+    ddate <- as.Date(ddate)
+  } else {
+    ddate <- max(oldfile2keep$Date) #if not known, assume the old logger was stopped when it was pulled out
+  }
+  cat("You have selected", as.character(ddate), "\n")
+  check <- readline("Is this correct? (y or n) ")
+  if (check == 'n'){
+    ddate <- readline("Enter a preferred transition date (as yyyy-mm-dd)?: ")
+    ddate <- as.Date(ddate)
+  }			
+  
+  
+  # Clip old and new datasets to correct dates
+  oldfile2keep <- oldfile2keep[oldfile2keep$Date >= as.Date(paste0(first.year, date.begin)) & oldfile2keep$Date <= ddate,]
+  oldfile2keep <- unique(oldfile2keep)
+  newfile2keep <- newfile2keep[newfile2keep$Date >= ddate & newfile2keep$Date <= as.Date(paste0(first.year + 1, date.end)),]
+  newfile2keep <- unique(newfile2keep)
+
+  last.obs <- NULL
+  first.obs <- NULL
+  # Error handling
+  if(nrow(oldfile2keep) > 0) { #only process if this file has records
+    if(!ddate %in% oldfile2keep$Date){
+      last.obs <- which(oldfile2keep$DateTime == max(oldfile2keep$DateTime, na.rm = T))
+      #stop("Error: The selected date does not occur in the first dataset. Examine data to see if there is a big gap.")
+    }
+    if(!ddate %in% newfile2keep$Date){
+      first.obs <- which(newfile2keep$DateTime == min(newfile2keep$DateTime, na.rm = T))
+      #stop("Error: The selected date does not occur in the second dataset. Examine data to see if there is a big gap.")
+    } 
   
   # Plot to see and pick the exact time of the switch
   obs.week1 <- which(oldfile2keep$Date == ddate)[1]
@@ -354,7 +406,11 @@ get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyob
   
   } else {
     first.date <- newfile2keep$DateTime[1]
-    file2keep <- newfile2keep[newfile2keep$DateTime >= first.date,]
+    newfile2keep <- newfile2keep[newfile2keep$DateTime >= first.date,]
+    file2keep <- merge(file2keep, newfile2keep[,c("DateTime", "Temp")], by = "DateTime", all.x = T)
+    file2keep$Temp[!is.na(file2keep$Temp.x)] <- file2keep$Temp.x[!is.na(file2keep$Temp.x)]
+    file2keep$Temp[!is.na(file2keep$Temp.y)] <- file2keep$Temp.y[!is.na(file2keep$Temp.y)]
+    file2keep <- unique(file2keep)
     file2keep <- file2keep[order(file2keep$Date, file2keep$Time),]
     file2keep <- file2keep[, c("DateTime", "Date", "Time", "Temp")]
   } #END empty oldfile2keep
