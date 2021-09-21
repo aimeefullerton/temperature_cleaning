@@ -17,9 +17,9 @@ data.dir <- paste0(data.dir1, "/", data.dir2)
 raw.data.folder <- paste0("Data_Raw_Sep", (first.year + 1), "/air")
 old.data.folder <- paste0("Data_Raw_Sep", first.year, "/air")
 cleaned.data.folder <- paste0("Data_Cleaned_", (first.year + 1), "/air")
-if(!exists(cleaned.data.folder)){
-  dir.create(paste0(data.dir1, "/", data.dir2, "/Data_Cleaned_", (first.year + 1)), showWarnings = F)
-  dir.create(paste0(data.dir1, "/", data.dir2, "/Data_Cleaned_", (first.year + 1), "/air"), showWarnings = F)
+if(!dir.exists(paste0(data.dir, "/", cleaned.data.folder))){
+  dir.create(paste0(data.dir, "/Data_Cleaned_", (first.year + 1)), showWarnings = F)
+  dir.create(paste0(data.dir, "/", cleaned.data.folder), showWarnings = F)
 }
 oldfiles <- dir(paste0(data.dir, "/", old.data.folder))
 thefiles <- dir(paste0(data.dir, "/", raw.data.folder))
