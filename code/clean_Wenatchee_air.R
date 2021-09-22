@@ -92,6 +92,7 @@ while(!is.null(i)){
   write.csv(dat, paste0(data.dir, "/", cleaned.data.folder, "/", site, ".csv"), row.names = F)
   rm(list = old.list); rm(list = new.list); rm(td, dat, newfile2keep, oldfile2keep)
   i <- NULL
+  cat(paste0("All done with ", site, "!"), "\n")
 }
 
 # Organize data as matrix with Date and Site columns; NAs where no data ####
