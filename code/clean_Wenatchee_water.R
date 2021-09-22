@@ -86,17 +86,15 @@ if(data.subdir == "WDFW"){
 
 # Clean the data, processing sites individually ####
 thefiles # Look at 'thefiles' and pick sites one manually
-i <- 26
+i <- 1
 while(!is.null(i)){
   data.file <- thefiles[i]
   site <- gsub("_.*","", data.file)
   cat(site, "\n")
   
   # Prepare possible files to use
-  old.loggers <- oldfiles[grep(paste0(site, "_"), oldfiles)]
-  new.loggers <- thefiles[grep(paste0(site, "_"), thefiles)]
-  old.loggers <- old.loggers[which(gsub("_", "", substr(old.loggers,1,3)) == site)]
-  new.loggers <- new.loggers[which(gsub("_", "", substr(new.loggers,1,3)) == site)]
+  old.loggers <- oldfiles[grep(site, oldfiles)]
+  new.loggers <- thefiles[grep(site, thefiles)]
   old.list <- new.list <- NULL
   
   # Read in and prepare data from previous year at this site
