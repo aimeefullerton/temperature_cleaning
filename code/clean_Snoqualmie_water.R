@@ -81,15 +81,15 @@ while(!is.null(i)){
   }
   
 # Check for flags
-check.hobo(dat) 
-plot.hobo(dat)
+check.logger(dat) 
+plot.logger(dat)
 
 # Proceed with cleaning the data
 # note: deployment and recovery dates should already be dealt with from above stitching steps
 dat <- clean.deployment(dat) #clip off data before deployment date
-plot.hobo(dat)
+plot.logger(dat)
 dat <- clean.recovery(dat) #clip off data after recovery date
-plot.hobo(dat)
+plot.logger(dat)
 thedirectory <- paste0(data.dir, "/", cleaned.data.folder) #for choosing nearby sites
 dat <- clean.middle(dat, thedirectory)
 

@@ -1,5 +1,5 @@
 # Clean temperature data files to remove erroneous readings (e.g. from air, sediment, or ice)
-# Aimee H Fullerton, 21 September 2021
+# Aimee H Fullerton, 22 September 2021
 
 # SETUP ####
 # Load functions
@@ -86,7 +86,7 @@ if(data.subdir == "WDFW"){
 
 # Clean the data, processing sites individually ####
 thefiles # Look at 'thefiles' and pick sites one manually
-i <- 15
+i <- 26
 while(!is.null(i)){
   data.file <- thefiles[i]
   site <- gsub("_.*","", data.file)
@@ -149,15 +149,15 @@ while(!is.null(i)){
   }
 
   # Check for flags
-  check.hobo(dat) 
-  plot.hobo(dat)
+  check.logger(dat) 
+  plot.logger(dat)
   
   # Proceed with cleaning the data
   # note: deployment and recovery dates should already be dealt with from above stitching steps
   dat <- clean.deployment(dat) #clip off data before deployment date
-  plot.hobo(dat)
+  plot.logger(dat)
   dat <- clean.recovery(dat) #clip off data after recovery date
-  plot.hobo(dat)
+  plot.logger(dat)
   thedirectory <- paste0(data.dir, "/", cleaned.data.folder) #for choosing nearby sites
   dat <- clean.middle(dat, thedirectory)
   
