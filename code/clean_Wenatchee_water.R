@@ -192,7 +192,8 @@ new.df$DateTime <- as.POSIXlt( foo, format = "%Y-%m-%d %H:%M")
 row.names(new.df) <- NULL
 
 for(i in 1:length(thefiles)){
-  site.name <- gsub("_.*","", thefiles[i])
+  #site.name <- gsub("_.*","", thefiles[i])
+  site.name <- gsub(".csv","",thefiles[i])
   td <- read.csv(paste0(data.dir, "/", cleaned.data.folder, "/", thefiles[i]), header = T, stringsAsFactors = F)
   # Add "DateTime" column if needed
   if(!"DateTime" %in% colnames(td)){
@@ -265,6 +266,7 @@ sites <- toupper(sites)
 
 wt.yy <- read.csv(paste0(data.dir, "/Data_Cleaned_", yy, "/", watershed, ".wt.", yy, ".csv"), header = T)
 wt.yy$Date <- as.Date(wt.yy$Date)
+wt.yy <- wt.yy[,2:ncol(wt.yy)]
 
 # Merge this year with previous years
 thesites <- sort(intersect(sites, colnames(wt.yy)))
