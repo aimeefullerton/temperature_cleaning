@@ -33,8 +33,8 @@ while(!is.null(i)){
   cat(site, "\n")
   
   # Prepare possible files to use
-  old.loggers <- oldfiles[grep(site, oldfiles)] #grep(paste0("_", site), oldfiles)
-  new.loggers <- thefiles[grep(site, thefiles)]
+  old.loggers <- oldfiles[grep(paste0("_", site), oldfiles)]
+  new.loggers <- thefiles[grep(paste0("_", site), thefiles)]
   old.list <- new.list <- NULL
   
   # Read in and prepare data from previous year at this site
@@ -131,7 +131,9 @@ while(!is.null(i)){
   png(paste0(data.dir, "/Data_Cleaned_", (first.year + 1), "/", watershed, ".at.", (first.year + 1), ".png"), width = 16, height = 10, units = "in", res = 300)
   par(mfrow = c(6,8), las = 1, cex = 0.5)
   for(i in 4:(ncol(new.df))){
-    plot(new.df$Date, new.df[,i], type = 'l', ylim = c(-5, 30), main = colnames(new.df)[i], xlab = "", ylab = "")
+    plot(new.df$Date, new.df[,i], type = 'l', ylim = c(-5, 35), main = colnames(new.df)[i], xlab = "", ylab = "")
+    abline(v = as.Date(paste0(first.year, date.begin)), lty = 2)
+    abline(v = as.Date(paste0(first.year + 1, date.end)), lty = 2)
   }
   dev.off()  
   
