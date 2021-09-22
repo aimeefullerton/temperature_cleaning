@@ -1,5 +1,5 @@
 # Functions for cleaning temperature data from loggers
-# Aimee H Fullerton, Last updated 16 November 2020
+# Aimee H Fullerton, Last updated 22 September 2021
 # Adapted from Colin Sowder's original functions
 
 # Get number of observations per day
@@ -97,25 +97,25 @@ prepare.file <- function(data.file, directory, numdailyobs = 24)
 }
 
 # Plot time series
-plot.hobo <- function(hobo, type = "l")
+plot.logger <- function(logger, type = "l")
 {
-  plot(hobo$Date, hobo$Temp, xlab = "Date", ylab = "Temperature (C)", type = type, cex = 0.3)
+  plot(logger$Date, logger$Temp, xlab = "Date", ylab = "Temperature (C)", type = type, cex = 0.3)
 }
 
 # Do some automated checking
-check.hobo <- function(hobo, response = "n")
+check.logger <- function(logger, response = "n")
 {
   ##first check for min
-  if (min(hobo$Temp, na.rm = T) < -1)
+  if (min(logger$Temp, na.rm = T) < -1)
   {
     stop <- TRUE
     i <- 1
     while(stop)
     {
-      if(hobo$Temp[i] < -1)
+      if(logger$Temp[i] < -1)
       {
-        day <- hobo$Date[i]
-        cat("The hobo was below -1 first on ", as.character(day), "\n")
+        day <- logger$Date[i]
+        cat("The logger was below -1 first on ", as.character(day), "\n")
         stop <- FALSE	
       }
       i <- i + 1
@@ -123,20 +123,20 @@ check.hobo <- function(hobo, response = "n")
   }
   else
   {
-    cat("The hobo was never below the minimum threshold \n")
+    cat("The logger was never below the minimum threshold \n")
   }
   
   ##check for max threshold (25)
-  if (max(hobo$Temp > 25, na.rm = T))
+  if (max(logger$Temp > 25, na.rm = T))
   {
     stop = TRUE
     i <- 1
     while(stop)
     {
-      if(hobo$Temp[i] > 25)
+      if(logger$Temp[i] > 25)
       {
-        day <- hobo$Date[i]
-        cat("The hobo was above 25 first on ", as.character(day), "\n")
+        day <- logger$Date[i]
+        cat("The logger was above 25 first on ", as.character(day), "\n")
         stop <- FALSE	
       }
       i <- i + 1
@@ -144,22 +144,22 @@ check.hobo <- function(hobo, response = "n")
   }
   else
   {
-    cat("The hobo was never above the maximum threshold \n")
+    cat("The logger was never above the maximum threshold \n")
   }
   
   ###remind the user to check the notes
-  response <- readline("Are there any notes that the hobo was out of the water? ")
+  response <- readline("Are there any notes that the logger was out of the water? ")
   if (response == 'y')
   {
     cat("Consult the notes \n")
   }
   else
   {
-    cat("There are no notes indicating the hobo was out of the water \n")
+    cat("There are no notes indicating the logger was out of the water \n")
   }
   
   ###check the variance, for right now let's look at the smaller  of two day differences?
-  temp <- hobo$Temp[!is.na(hobo$Temp)]
+  temp <- logger$Temp[!is.na(logger$Temp)]
   n <- length(temp) - (numdailyobs * 2) + 1
   day1 <- 0
   day2 <- 0
@@ -178,30 +178,30 @@ check.hobo <- function(hobo, response = "n")
     if(smdiff > bsmdiff)
     {
       bsmdiff <- smdiff
-      when <- hobo$Date[i]		
+      when <- logger$Date[i]		
     }	
   }
   
   cat("The largest two day difference began on ", as.character(when), "and was ", bsmdiff, "degrees \n")
-  cat("The first observation was on ", as.character(hobo$Date[1]),"at ", hobo$Time[1],"\n")
-  cat("The last observation was on ", as.character(hobo$Date[length(hobo$Date)]),"at ", hobo$Time[length(hobo$Time)], "\n")
+  cat("The first observation was on ", as.character(min(logger$Date[!is.na(logger$Temp)])),"at ", min(logger$Time[logger$Date == max(logger$Date[!is.na(logger$Temp)])]),"\n")
+  cat("The last observation was on ", as.character(max(logger$Date[!is.na(logger$Temp)])),"at ", max(logger$Time[logger$Date == max(logger$Date[!is.na(logger$Temp)])]), "\n")
 }
 
 # Plot time series over a single day
-plot.day <- function(hobo, day)
+plot.day <- function(logger, day)
 {
-  Temps <- hobo$Temp[which(hobo$Date == day)]
+  Temps <- logger$Temp[which(logger$Date == day)]
   obs <- 1:length(Temps)
   plot(obs, Temps, xlab = "Observation", ylab = "Temperature (C)", main = paste("Temperatures on ", as.character(day)))
 }
 
 # Plot time series over a week
-plot.week <- function(hobo, day)
+plot.week <- function(logger, day)
 {
-  obs.week <- which(hobo$Date == day)[1]
+  obs.week <- which(logger$Date == day)[1]
   obs.week <- seq(from = obs.week, length.out = (numdailyobs * 7), by = 1)
-  obs.week <- intersect(obs.week, obs.week[1]:length(hobo$Temp))
-  Temps <- hobo$Temp[obs.week]
+  obs.week <- intersect(obs.week, obs.week[1]:length(logger$Temp))
+  Temps <- logger$Temp[obs.week]
   obs <- 1:length(Temps)
   plot(obs, Temps, xlab = "Observation", ylab = "Temperature (C)", main = paste("Temperatures of week starting on ", as.character(day)))
 }
@@ -428,9 +428,9 @@ get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyob
 }
 
 # Remove data before date of deployment
-clean.deployment <- function(hobo, deploy.date = NULL)
+clean.deployment <- function(logger, deploy.date = NULL)
 {
-  date.firstobs <- min(hobo$Date[!is.na(hobo$Temp)])
+  date.firstobs <- min(logger$Date[!is.na(logger$Temp)])
   cat("The first observation was on", as.character(date.firstobs), "\n")
   ans <- readline("Does deployment date need to be cleaned? (y or n) ")
   if(ans == "y"){
@@ -443,11 +443,11 @@ clean.deployment <- function(hobo, deploy.date = NULL)
   
   while(is.null(deploy.date))
   {
-    obs <- 1:length(hobo$Temp)
-    plot(obs, hobo$Temp, ylab = "Temperature (C)", xlab = "Observation", main = "Pick an observation from deployment date", cex = 0.7)
-    manual.deploy <- identify(obs, hobo$Temp, n = 1)
-    cand.date <- hobo$Date[manual.deploy]
-    plot.day(hobo, cand.date)
+    obs <- 1:length(logger$Temp)
+    plot(obs, logger$Temp, ylab = "Temperature (C)", xlab = "Observation", main = "Pick an observation from deployment date", cex = 0.7)
+    manual.deploy <- identify(obs, logger$Temp, n = 1)
+    cand.date <- logger$Date[manual.deploy]
+    plot.day(logger, cand.date)
     cat("The selected date is", as.character(cand.date), "\n")
     good.choice <- readline("Is this the deployment date? (y or n) ")
     if (good.choice == 'y')
@@ -458,28 +458,28 @@ clean.deployment <- function(hobo, deploy.date = NULL)
   first.obs = NULL
   while(is.null(first.obs))
   {
-    day.obs <- which(hobo$Date == deploy.date)
-    plot(day.obs, hobo$Temp[day.obs], xlab = "Observation number", ylab = "Temperature (C)", main = "Choose the first valid temperature", cex = 0.7)
-    first.in <- identify(day.obs,hobo$Temp[day.obs], n = 1)
+    day.obs <- which(logger$Date == deploy.date)
+    plot(day.obs, logger$Temp[day.obs], xlab = "Observation number", ylab = "Temperature (C)", main = "Choose the first valid temperature", cex = 0.7)
+    first.in <- identify(day.obs,logger$Temp[day.obs], n = 1)
     first.in <- day.obs[first.in]
     new.obs <- setdiff(day.obs,day.obs[1]:(first.in - 1))
-    points(new.obs,hobo$Temp[new.obs], lwd = 2, col = 2)
-    cat("You have selected", hobo$Time[first.in], "\n")
+    points(new.obs,logger$Temp[new.obs], lwd = 2, col = 2)
+    cat("You have selected", logger$Time[first.in], "\n")
     check <- readline("Does this look correct? (y or n) ")
     if (check == 'y')
     {
       first.obs <- first.in	
     }			
   }
-  hobo <- hobo[first.in:length(hobo$Temp),]
+  logger <- logger[first.in:length(logger$Temp),]
   }
-  return(hobo)
+  return(logger)
 }
 
 # Remove data after date of recovery
-clean.recovery <- function(hobo, recover.date = NULL)
+clean.recovery <- function(logger, recover.date = NULL)
 {
-  date.lastobs <- max(hobo$Date[!is.na(hobo$Temp)])
+  date.lastobs <- max(logger$Date[!is.na(logger$Temp)])
   cat("The last observation was on", as.character(date.lastobs), "\n")
   ans <- readline("Does recovery date need to be cleaned? (y or n) ")
   if(ans == "y"){
@@ -492,11 +492,11 @@ clean.recovery <- function(hobo, recover.date = NULL)
   
   while(is.null(recover.date))
   {
-    obs <- 1:length(hobo$Temp)
-    plot(obs, hobo$Temp, ylab = "Temperature (C)", xlab = "Observation", main = "Pick an observation from recovery date", cex = 0.7)
-    manual.recov <- identify(obs, hobo$Temp, n = 1)
-    cand.date <- hobo$Date[manual.recov]
-    plot.day(hobo, cand.date)
+    obs <- 1:length(logger$Temp)
+    plot(obs, logger$Temp, ylab = "Temperature (C)", xlab = "Observation", main = "Pick an observation from recovery date", cex = 0.7)
+    manual.recov <- identify(obs, logger$Temp, n = 1)
+    cand.date <- logger$Date[manual.recov]
+    plot.day(logger, cand.date)
     cat("The selected date is",as.character(cand.date),"\n")
     good.choice = readline("Is this the recovery date? (y or n) ")
     if (good.choice == 'y')
@@ -507,26 +507,26 @@ clean.recovery <- function(hobo, recover.date = NULL)
   last.obs <- NULL	
   while(is.null(last.obs))
   {
-    day.obs <- which(hobo$Date == recover.date)
-    plot(day.obs, hobo$Temp[day.obs], xlab = "Observation number", ylab = "Temperature (C)", main = "Choose the last valid temperature", cex = 0.7)
-    last.in <- identify(day.obs,hobo$Temp[day.obs], n = 1)
+    day.obs <- which(logger$Date == recover.date)
+    plot(day.obs, logger$Temp[day.obs], xlab = "Observation number", ylab = "Temperature (C)", main = "Choose the last valid temperature", cex = 0.7)
+    last.in <- identify(day.obs,logger$Temp[day.obs], n = 1)
     last.in <- day.obs[last.in]
     new.obs <- setdiff(day.obs, (last.in + 1):day.obs[length(day.obs)])
-    points(new.obs,hobo$Temp[new.obs], lwd = 2, col = 2)
-    cat("You have selected",hobo$Time[last.in],"\n")
+    points(new.obs,logger$Temp[new.obs], lwd = 2, col = 2)
+    cat("You have selected",logger$Time[last.in],"\n")
     check <- readline("Does this look correct? (y or n) ")
     if (check == 'y')
     {
       last.obs <- last.in	
     }			
   }
-  hobo <- hobo[1:last.obs,]
+  logger <- logger[1:last.obs,]
   }
-  return(hobo)	
+  return(logger)	
 }
 
 # Clean middle stretches and specific values; calls 'clean.range' and 'remove.points'
-clean.middle <- function(hobo, thedirectory = NA)
+clean.middle <- function(logger, thedirectory = NA)
 {
   ans <- readline("Do any data in the middle need to be cleaned? (y or n) ")
   if(ans == "y"){ 
@@ -538,35 +538,35 @@ clean.middle <- function(hobo, thedirectory = NA)
         near.file <- dir(thedirectory)[ans]
         nearby.site <- read.csv(paste0(thedirectory, "/", near.file), header = T, stringsAsFactors = F)
         #colnames(nearby.site)[3] <- "Temp"
-        hobo <- clean.range(hobo, close.site = nearby.site) 
+        logger <- clean.range(logger, close.site = nearby.site) 
       } else{ # no nearby site
-        hobo <- clean.range(hobo)
+        logger <- clean.range(logger)
       }
       ans <- readline("Do any other sections need to be removed? (y or n) ") 
     }
     ans <- readline("Remove specific values? (y or n) ")
     while(ans == "y"){
-      hobo <- remove.points(hobo)
+      logger <- remove.points(logger)
       ans <- readline("Do any other specific values need to be removed? (y or n) ")
     }
   }
-  return(hobo)
+  return(logger)
 }
 
 # Clean a range of values, aided by plots of a nearby site if applicable
-clean.range <- function(hobo, start.date = NULL, end.date = NULL, close.site = NULL)
+clean.range <- function(logger, start.date = NULL, end.date = NULL, close.site = NULL)
 {
   while(is.null(start.date))
   {
-    obs <- 1:length(hobo$Temp)
-    plot(obs, hobo$Temp, ylab = "Temperature", xlab = "Observation", main = "Pick an observation from before bad data")
+    obs <- 1:length(logger$Temp)
+    plot(obs, logger$Temp, ylab = "Temperature", xlab = "Observation", main = "Pick an observation from before bad data")
     if(is.null(close.site) == F)
     {
       lines(close.site$Temp, col = 'red')
     }
-    manual.deploy <- identify(obs, hobo$Temp, n = 1)
-    cand.date <- hobo$Date[manual.deploy]
-    plot.week(hobo, cand.date)
+    manual.deploy <- identify(obs, logger$Temp, n = 1)
+    cand.date <- logger$Date[manual.deploy]
+    plot.week(logger, cand.date)
     if(is.null(close.site) == F)
     {
       fr.week <- which(close.site$Date == cand.date)[1]
@@ -584,10 +584,10 @@ clean.range <- function(hobo, start.date = NULL, end.date = NULL, close.site = N
   first.obs <- NULL
   while(is.null(first.obs))
   {
-    obs.week <- which(hobo$Date == start.date)[1]
+    obs.week <- which(logger$Date == start.date)[1]
     obs.week <- seq(from = obs.week, length.out = (numdailyobs * 7), by = 1)
-    obs.week <- intersect(obs.week, obs.week[1]:length(hobo$Temp))
-    plot(obs.week, hobo$Temp[obs.week], xlab = "Observation number", ylab = "Temperature (C)", main = "Choose the first invalid temperature")
+    obs.week <- intersect(obs.week, obs.week[1]:length(logger$Temp))
+    plot(obs.week, logger$Temp[obs.week], xlab = "Observation number", ylab = "Temperature (C)", main = "Choose the first invalid temperature")
     if(is.null(close.site) == F)
     {
       fr.week <- which(close.site$Date == cand.date)[1]
@@ -595,11 +595,11 @@ clean.range <- function(hobo, start.date = NULL, end.date = NULL, close.site = N
       fr.week <- intersect(fr.week, fr.week[1]:length(close.site$Temp))
       lines(obs.week, close.site$Temp[fr.week], col = 'red')
     }
-    first.in <- identify(obs.week, hobo$Temp[obs.week], n = 1)
+    first.in <- identify(obs.week, logger$Temp[obs.week], n = 1)
     first.in <- obs.week[first.in]
     new.obs <- setdiff(obs.week, obs.week[1]:(first.in - 1))
-    points(new.obs ,hobo$Temp[new.obs], lwd = 2, col = 2)
-    cat("You have selected", hobo$Time[first.in], "\n")
+    points(new.obs ,logger$Temp[new.obs], lwd = 2, col = 2)
+    cat("You have selected", logger$Time[first.in], "\n")
     check <- readline("Does this look correct? (y or n) ")
     if (check == 'y')
     {
@@ -608,15 +608,15 @@ clean.range <- function(hobo, start.date = NULL, end.date = NULL, close.site = N
   }
   while(is.null(end.date))
   {
-    obs <- 1:length(hobo$Temp)
-  plot(obs, hobo$Temp, ylab = "Temperature (C)", xlab = "Observation", main = "Pick an observation from before good data")
+    obs <- 1:length(logger$Temp)
+  plot(obs, logger$Temp, ylab = "Temperature (C)", xlab = "Observation", main = "Pick an observation from before good data")
     if(is.null(close.site) == F)
     {
       lines(close.site$Temp, col = 'red')
     }
-    manual.recov <- identify(obs, hobo$Temp, n = 1)
-    cand.date <- hobo$Date[manual.recov]
-    plot.week(hobo, cand.date)
+    manual.recov <- identify(obs, logger$Temp, n = 1)
+    cand.date <- logger$Date[manual.recov]
+    plot.week(logger, cand.date)
     if(is.null(close.site) == F)
     {
       fr.week <- which(close.site$Date == cand.date)[1]
@@ -634,10 +634,10 @@ clean.range <- function(hobo, start.date = NULL, end.date = NULL, close.site = N
   last.obs <- NULL	
   while(is.null(last.obs))
   {
-    obs.week <- which(hobo$Date == end.date)[1]
+    obs.week <- which(logger$Date == end.date)[1]
     obs.week <- seq(from = obs.week, length.out = (numdailyobs * 7), by = 1)
-    obs.week <- intersect(obs.week, obs.week[1]:length(hobo$Temp))
-    plot(obs.week, hobo$Temp[obs.week], xlab = "Observation number", ylab = "Temperature (C)", main = "Choose the last invalid temperature")
+    obs.week <- intersect(obs.week, obs.week[1]:length(logger$Temp))
+    plot(obs.week, logger$Temp[obs.week], xlab = "Observation number", ylab = "Temperature (C)", main = "Choose the last invalid temperature")
     if(is.null(close.site) == F)
     {
       fr.week <- which(close.site$Date == cand.date)[1]
@@ -645,47 +645,46 @@ clean.range <- function(hobo, start.date = NULL, end.date = NULL, close.site = N
       fr.week <- intersect(fr.week, fr.week[1]:length(close.site$Temp))
       lines(obs.week, close.site$Temp[fr.week], col = 'red')
     }
-    last.in <- identify(obs.week, hobo$Temp[obs.week], n = 1)
+    last.in <- identify(obs.week, logger$Temp[obs.week], n = 1)
     last.in <- obs.week[last.in]
     
     new.obs <- setdiff(obs.week, (last.in + 1):obs.week[length(obs.week)])
-    points(new.obs, hobo$Temp[new.obs], lwd = 2, col = 2)
-    cat("You have selected", hobo$Time[last.in], "\n")
+    points(new.obs, logger$Temp[new.obs], lwd = 2, col = 2)
+    cat("You have selected", logger$Time[last.in], "\n")
     check <- readline("Does this look correct? (y or n) ")
     if (check == 'y')
     {
       last.obs <- last.in	
     }			
   }
-  hobo$Temp[first.in:last.in] <- rep(NA, length(first.in:last.in))
-  plot.hobo(hobo)
+  logger$Temp[first.in:last.in] <- rep(NA, length(first.in:last.in))
+  plot.logger(logger)
   if(is.null(close.site) == F)
   {
     lines(close.site$Temp, col = 'red')
   }
-  return(hobo)
+  return(logger)
 }
 
 # Remove specific points
-remove.points <- function(hobo)
+remove.points <- function(logger)
 {
-  obs <- 1:length(hobo$Temp)
-  plot(hobo$Temp, main = "Click on the points you want to remove")
+  obs <- 1:length(logger$Temp)
+  plot(logger$Temp, main = "Click on the points you want to remove")
   npoints <- as.numeric(readline("How many points do you want to remove? (enter a number greater than you'll need). "))
   data2rmv <- NULL
   i <- 1
   while(i < npoints){
-    point2rmv <- identify(obs, hobo$Temp, n = 1)
+    point2rmv <- identify(obs, logger$Temp, n = 1)
     data2rmv <- c(data2rmv, point2rmv)
     i <- i + 1
   }
   data2rmv <- unique(data2rmv)
   
-  hobo$Temp[data2rmv] <- rep(NA, length(data2rmv))
-  plot.hobo(hobo)
-  return(hobo)
+  logger$Temp[data2rmv] <- rep(NA, length(data2rmv))
+  plot.logger(logger)
+  return(logger)
 }
-
 
 # Lookup values using named vectors:
 get_value <- function(mykey, mylookupvector)
@@ -695,41 +694,35 @@ get_value <- function(mykey, mylookupvector)
   return(myvalue)
 }
 
-# No longer used:
+# Ensure the timeseries has a complete set of dates/times even if temperatures are NA
+fill.time.series <- function(time.series, first.year, date.begin, date.end, numdailyobs){
 
-# Read in file
-read.hobo <- function(filename)
-{
-  data <- read.csv(filename, header = T, colClasses = c("character", "character", "numeric"))
-  names(data) <- c("Date", "Time", "Temp")
-  data <- remove.na(data)
-  plot.hobo(data)
-  return(data)
+# Create empty dataframe with all dates/times
+dates <- seq(from = as.Date(paste0(first.year, date.begin)), to = as.Date(paste0(first.year + 1, date.end)), by = 1)
+file2keep <- data.frame(matrix(NA, nrow = length(dates) * numdailyobs, ncol = 3))
+colnames(file2keep) <- c("Date", "Time", "Temp")
+file2keep$Date <- rep(dates, numdailyobs)
+file2keep <- file2keep[order(file2keep$Date),]
+if(numdailyobs == 48){
+  file2keep$Time <- rep(seq(0, 23.5, 0.5), length(dates))
+} else if(numdailyobs == 24){
+  file2keep$Time <- rep(seq(0, 23, 1), length(dates))
+}
+foo <- paste0(file2keep$Date, " ", sprintf("%02d", floor(file2keep$Time)), ":00")
+if(numdailyobs == 48) foo[seq(2, length(foo), 2)] <- gsub(":00", ":30", foo[seq(2, length(foo), 2)])
+file2keep$DateTime <- as.POSIXlt( foo, format = "%Y-%m-%d %H:%M")
+row.names(file2keep) <- NULL
+
+
+# Merge
+file2keep <- merge(file2keep[, c("DateTime", "Date", "Time")], time.series[, c("DateTime", "Temp")], by = "DateTime", all.x = T)
+file2keep$Temp[!is.na(file2keep$Temp.x)] <- file2keep$Temp.x[!is.na(file2keep$Temp.x)]
+file2keep$Temp[!is.na(file2keep$Temp.y)] <- file2keep$Temp.y[!is.na(file2keep$Temp.y)]
+file2keep <- unique(file2keep)
+file2keep <- file2keep[order(file2keep$Date, file2keep$Time),]
+file2keep <- file2keep[, c("DateTime", "Date", "Time", "Temp")]
+
+return(file2keep)
 }
 
-# Remove NAs
-remove.na <- function(hobo)
-{
-  hobo2 <- hobo[which(is.na(hobo$Temp) == FALSE),]
-  ###check obs/day except on enddates
-  dates <- unique(hobo2$Date)
-  end.dates <- c(hobo2$Date[1], hobo2$Date[length(hobo2$Temp)])
-  dates.check <- setdiff(dates, end.dates)
-  for(i in dates.check)
-  {
-    if(length(which(hobo2$Date == i)) != numdailyobs)
-    {
-      cat("There is an error on day", i, "\n")
-      cat("Returning original hobo \n")
-      return(hobo)	
-    }	
-  }	
-  return(hobo2)
-}
-
-# Save as a .csv file
-write.hobo <- function(hoboname, filename)
-{
-  write.csv(hoboname, filename, row.names = FALSE)
-}
 
