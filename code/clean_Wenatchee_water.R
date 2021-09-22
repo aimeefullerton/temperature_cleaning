@@ -86,7 +86,7 @@ if(data.subdir == "WDFW"){
 
 # Clean the data, processing sites individually ####
 thefiles # Look at 'thefiles' and pick sites one manually
-i <- 1
+i <- 15
 while(!is.null(i)){
   data.file <- thefiles[i]
   site <- gsub("_.*","", data.file)
@@ -165,7 +165,13 @@ while(!is.null(i)){
   plot(dat$Date, dat$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
   summary(dat[!is.na(dat$Temp),])
   
-  write.csv(dat, paste0(data.dir, "/", cleaned.data.folder, "/", data.file), row.names = F)
+  # Ensure the whole time series is filled out (even if some temperatures are NAs)
+  dat <- fill.time.series(dat, first.year, date.begin, date.end, numdailyobs)
+  
+  write.csv(dat, paste0(data.dir, "/", cleaned.data.folder, "/", site, ".csv"), row.names = F)
+  rm(list = old.list); rm(list = new.list); rm(td, dat, newfile2keep, oldfile2keep)
+  i <- NULL
+  cat(paste0("All done with ", site, "!"), "\n")
 }
 
 # Organize data as matrix with Date and Site columns; NAs where no data ####
