@@ -112,7 +112,7 @@ check.logger <- function(logger, response = "n")
     i <- 1
     while(stop)
     {
-      if(logger$Temp[i] < -1)
+      if(!is.na(logger$Temp[i]) & logger$Temp[i] < -1)
       {
         day <- logger$Date[i]
         cat("The logger was below -1 first on ", as.character(day), "\n")
@@ -133,7 +133,7 @@ check.logger <- function(logger, response = "n")
     i <- 1
     while(stop)
     {
-      if(logger$Temp[i] > 25)
+      if(!is.na(logger$Temp[i]) & logger$Temp[i] > 25)
       {
         day <- logger$Date[i]
         cat("The logger was above 25 first on ", as.character(day), "\n")
