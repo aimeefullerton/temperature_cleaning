@@ -212,43 +212,4 @@ write.csv(td4, paste0(data.dir1, "/", watershed, ".wt", yy, ".csv"), row.names =
 
 
 # Merge with all other years ####
-yy <- first.year + 1
-wt.all <- read.csv(paste0(data.dir, "/", watershed, ".wt.allyears_", first.year, ".csv"), header = T)
-wt.all$Date <- as.Date(wt.all$Date, format = "%m/%d/%y")
-sites <- toupper(colnames(wt.all[3:ncol(wt.all)]))
-colnames(wt.all) <- c("Date", "Time", sites)
-
-wt.yy <- read.csv(paste0(data.dir, "/Data_Cleaned_", yy, "/", watershed, ".wt.", yy, ".csv"), header = T)
-wt.yy$Date <- as.Date(wt.yy$Date)
-wt.yy <- wt.yy[,2:ncol(wt.yy)]
-
-# Merge this year with previous years
-thesites <- sort(intersect(sites, colnames(wt.yy)))
-wt.all.merged <- matrix(NA, nrow = nrow(wt.all) + nrow(wt.yy), ncol = (length(sites) + 2))
-wt.all.merged <- as.data.frame(wt.all.merged)
-colnames(wt.all.merged) <- c("Date", "Time", sites)
-wt.all.merged$Date <- as.Date("2001-01-01")
-
-wt.all.merged[1:nrow(wt.all),] <- wt.all
-idx <- ((nrow(wt.all) + 1) : nrow(wt.all.merged))
-wt.all.merged$Date[idx] <- wt.yy$Date
-wt.all.merged$Time[idx] <- wt.yy$Time
-
-for(s in 1:length(thesites)){
-  site <- thesites[s]
-  wt.all.merged[idx, site] <- wt.yy[,site]
-}
-summary(wt.all.merged)
-plot(wt.all.merged$Date, wt.all.merged[,4], type = 'l')
-
-write.csv(wt.all.merged, paste0(data.dir, "/", watershed, ".wt.allyears.csv"), row.names = F)
-
-# plot in individual panels to check
-png(paste0(data.dir, "/", watershed, ".wt.allyears.png"), width = 16, height = 10, units = "in", res = 300)
-par(mfrow = c(6,8), las = 1, cex = 0.5)
-
-for(i in 3:(ncol(wt.all.merged))){
-  plot(wt.all.merged$Date, wt.all.merged[,i], type = 'l', ylim = c(-5, 25), main = colnames(wt.all.merged)[i], xlab = "", ylab = "")
-}
-dev.off()  
-
+update.allyears(type = "wt", data.dir, watershed, first.year)
