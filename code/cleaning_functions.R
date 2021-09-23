@@ -5,46 +5,6 @@
 # Get number of observations per day
 numdailyobs <- get("numdailyobs")
 
-# Read in and prepare raw file exported directly from Onset
-prepare.file1 <- function(data.file, directory)
-{
-  
-  td <- read.csv(paste0(directory, "/", data.file), skip = 1, header = T, stringsAsFactors = F)[,2:3]
-  
-  colnames(td) = c("DateTime","Temp")
-  td <- td[!is.na(td$Temp),] # remove any records of bad battery etc. important step!
-  a <- substr(as.POSIXlt(td$DateTime[1], origin = "1970-01-01", format = "%m/%d/%Y"), 1, 2)
-  if(a < 19) date.format <- "%m/%d/%y" else date.format <- "%m/%d/%Y"
-  td$Date <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = date.format)
-  td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = paste(date.format, "%I:%M:%S %p"))
-  td$Time <- td$DateTime$hour
-  evens <- seq(2, length(td$Time),2)
-  td$Time[evens] <- td$Time[evens] + 0.5
-  td <- td[!is.na(td$DateTime),]
-  td <- td[order(td$Date, td$Time),]
-  td$Date <- as.Date(td$Date)
-  
-  return(td)
-}
-
-# Read in and prepare file with "Date", "Time", and "Temp"
-prepare.file2 <- function(data.file, directory)
-{
-  
-  td <- read.csv(paste0(directory, "/", data.file), header = T, stringsAsFactors = F)
-  td$Date <- as.POSIXlt(td$Date, origin = "1970-01-01", format = "%m/%d/%y")
-  td$DateTime <- paste(td$Date, td$Time)
-  td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format ="%Y-%m-%d %H:%M")
-  td <- td[, c("DateTime", "Temp", "Date", "Time")]
-  td$Date <- as.Date(td$Date)
-  
-  td <- td[!is.na(td$Temp),] # remove any records of bad battery etc. important step!
-  td <- td[!is.na(td$DateTime),]
-  td <- td[order(td$Date, td$Time),]
-
-  return(td)
-}
-
 # Read in and prepare file; flexible format
 prepare.file <- function(data.file, directory, numdailyobs = 24)
 {
@@ -695,7 +655,8 @@ get_value <- function(mykey, mylookupvector)
 }
 
 # Ensure the timeseries has a complete set of dates/times even if temperatures are NA
-fill.time.series <- function(time.series, first.year, date.begin, date.end, numdailyobs){
+fill.time.series <- function(time.series, first.year, date.begin, date.end, numdailyobs)
+{
 
 # Create empty dataframe with all dates/times
 dates <- seq(from = as.Date(paste0(first.year, date.begin)), to = as.Date(paste0(first.year + 1, date.end)), by = 1)
@@ -725,8 +686,9 @@ file2keep <- file2keep[, c("DateTime", "Date", "Time", "Temp")]
 return(file2keep)
 }
 
-# Organize data as matrix with Date and Site columns (NAs where no data) and plot
-create.matrix <- function(type, data.dir, cleaned.data.folder, watershed, first.year, date.begin, date.end, numdailyobs){
+# Organize data as matrix with Date/Time vs Site columns (NAs where no data) and plot
+create.matrix <- function(type, data.dir, cleaned.data.folder, watershed, first.year, date.begin, date.end, numdailyobs)
+{
   
 (thefiles <- dir(paste0(data.dir, "/", cleaned.data.folder)))
 
@@ -771,4 +733,93 @@ for(i in 4:(ncol(new.df))){
 }
 dev.off()  
 }
+
+# Merge a year with all other years into Date/Time by Site matrix ####
+update.allyears <- function(type, data.dir, watershed, first.year)
+{
+  
+yy <- first.year + 1
+dat.all <- read.csv(paste0(data.dir, "/", watershed, ".", type, ".allyears_", first.year, ".csv"), header = T)
+dat.all$Date <- as.Date(dat.all$Date, format = "%m/%d/%y")
+sites <- toupper(colnames(dat.all[3:ncol(dat.all)]))
+colnames(dat.all) <- c("Date", "Time", sites)
+
+dat.yy <- read.csv(paste0(data.dir, "/Data_Cleaned_", yy, "/", watershed, ".", type, ".", yy, ".csv"), header = T)
+dat.yy$Date <- as.Date(dat.yy$Date)
+for(i in 3:ncol(dat.yy)){
+  cn <- colnames(dat.yy)[i]
+  colnames(dat.yy)[i] <- gsub("_.*","", cn)
+}
+
+# Merge this year with previous years
+thesites <- sort(intersect(sites, colnames(dat.yy)))
+dat.all.merged <- matrix(NA, nrow = nrow(dat.all) + nrow(dat.yy), ncol = (length(sites) + 2))
+dat.all.merged <- as.data.frame(dat.all.merged)
+colnames(dat.all.merged) <- c("Date", "Time", sites)
+dat.all.merged$Date <- as.Date("2001-01-01")
+
+dat.all.merged[1:nrow(dat.all),] <- dat.all
+idx <- ((nrow(dat.all) + 1) : nrow(dat.all.merged))
+dat.all.merged$Date[idx] <- dat.yy$Date
+dat.all.merged$Time[idx] <- dat.yy$Time
+
+for(s in 1:length(thesites)){
+  site <- thesites[s]
+  dat.all.merged[idx, site] <- dat.yy[,site]
+}
+summary(dat.all.merged)
+plot(dat.all.merged$Date, dat.all.merged[,3], type = 'l')
+
+write.csv(dat.all.merged, paste0(data.dir, "/", watershed, ".", type, ".allyears_", yy, ".csv"), row.names = F)
+
+# plot in individual panels to check
+png(paste0(data.dir, "/", watershed, ".", type, ".allyears_", yy, ".png"), width = 16, height = 10, units = "in", res = 300)
+par(mfrow = c(6,8), las = 1, cex = 0.5)
+
+for(i in 3:(ncol(dat.all.merged))){
+  plot(dat.all.merged$Date, dat.all.merged[,i], type = 'l', ylim = c(-10, 35), main = colnames(dat.all.merged)[i], xlab = "", ylab = "")
+}
+dev.off()  
+}
+
+# Read in and prepare raw file exported directly from Onset
+prepare.file1 <- function(data.file, directory)
+{
+  
+  td <- read.csv(paste0(directory, "/", data.file), skip = 1, header = T, stringsAsFactors = F)[,2:3]
+  
+  colnames(td) = c("DateTime","Temp")
+  td <- td[!is.na(td$Temp),] # remove any records of bad battery etc. important step!
+  a <- substr(as.POSIXlt(td$DateTime[1], origin = "1970-01-01", format = "%m/%d/%Y"), 1, 2)
+  if(a < 19) date.format <- "%m/%d/%y" else date.format <- "%m/%d/%Y"
+  td$Date <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = date.format)
+  td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = paste(date.format, "%I:%M:%S %p"))
+  td$Time <- td$DateTime$hour
+  evens <- seq(2, length(td$Time),2)
+  td$Time[evens] <- td$Time[evens] + 0.5
+  td <- td[!is.na(td$DateTime),]
+  td <- td[order(td$Date, td$Time),]
+  td$Date <- as.Date(td$Date)
+  
+  return(td)
+}
+
+# Read in and prepare file with "Date", "Time", and "Temp"
+prepare.file2 <- function(data.file, directory)
+{
+  
+  td <- read.csv(paste0(directory, "/", data.file), header = T, stringsAsFactors = F)
+  td$Date <- as.POSIXlt(td$Date, origin = "1970-01-01", format = "%m/%d/%y")
+  td$DateTime <- paste(td$Date, td$Time)
+  td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format ="%Y-%m-%d %H:%M")
+  td <- td[, c("DateTime", "Temp", "Date", "Time")]
+  td$Date <- as.Date(td$Date)
+  
+  td <- td[!is.na(td$Temp),] # remove any records of bad battery etc. important step!
+  td <- td[!is.na(td$DateTime),]
+  td <- td[order(td$Date, td$Time),]
+  
+  return(td)
+}
+
 
