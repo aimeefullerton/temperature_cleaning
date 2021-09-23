@@ -5,6 +5,20 @@
 # Get number of observations per day
 numdailyobs <- get("numdailyobs")
 
+detect.date.format <- function(testdate)
+{
+  date.format <- NULL
+  a <- substr(as.POSIXlt(testdate, origin = "1970-01-01", format = "%m/%d/%Y"), 1, 2)
+  if(is.na(a)) a <- substr(as.POSIXlt(testdate, origin = "1970-01-01", format = "%Y-%m-%d"), 1, 4)
+  a <- as.numeric(a)
+  if(!is.na(a)){
+    if(a > 1900) date.format <- "%Y-%m-%d"
+    if(a < 19) date.format <- "%m/%d/%y" 
+    if(a > 19 & a < 1900) date.format <- "%m/%d/%Y"
+  }
+  return(date.format)
+}
+
 # Read in and prepare file; flexible format
 prepare.file <- function(data.file, directory, numdailyobs = 24)
 {
@@ -21,8 +35,7 @@ prepare.file <- function(data.file, directory, numdailyobs = 24)
     if(nchar(worked[1,1]) > 8){
     td <- read.csv(paste0(directory, "/", data.file), skip = 1, header = T, stringsAsFactors = F)[,2:3]
     colnames(td) = c("DateTime","Temp")
-    a <- substr(as.POSIXlt(td$DateTime[1], origin = "1970-01-01", format = "%m/%d/%Y"), 1, 2)
-    if(a < 19) date.format <- "%m/%d/%y" else date.format <- "%m/%d/%Y"
+    date.format <- detect.date.format(td$DateTime[1])
     td$Date <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = date.format)
     td$Date <- as.Date(td$Date)
     if(nchar(worked[1,1]) > 14) td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = paste(date.format, "%I:%M:%S %p"))
@@ -33,13 +46,11 @@ prepare.file <- function(data.file, directory, numdailyobs = 24)
   if(length(worked) == 0 | (length(worked) > 0 & nchar(worked[1,1]) <= 8)) {
     td <- read.csv(paste0(directory, "/", data.file), skip = 1, header = F, stringsAsFactors = F) 
     colnames(td) = c("Date", "Time","Temp")
-    a <- substr(as.POSIXlt(td$Date[1], origin = "1970-01-01", format = "%m/%d/%Y"), 1, 2)
-    if(a < 19) date.format <- "%m/%d/%y" else date.format <- "%m/%d/%Y"
+    date.format <- detect.date.format(td$DateTime[1])
     td$Date <- as.POSIXlt(td$Date, origin = "1970-01-01", format = date.format)
     td$Date <- as.Date(td$Date)
     td$DateTime <- paste(td$Date, td$Time)
     td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = "%Y-%m-%d %H:%M")
-    #lubridate::parse_date_time(td$DateTime, orders = "%m-%d-%y %I:%M:%S %p")
     td <- td[,c("DateTime", "Temp", "Date")]
   }
   
@@ -740,12 +751,14 @@ update.allyears <- function(type, data.dir, watershed, first.year)
   
 yy <- first.year + 1
 dat.all <- read.csv(paste0(data.dir, "/", watershed, ".", type, ".allyears_", first.year, ".csv"), header = T)
-dat.all$Date <- as.Date(dat.all$Date, format = "%m/%d/%y")
+date.format <- detect.date.format(dat.all$Date[1])
+dat.all$Date <- as.Date(dat.all$Date, format = date.format)
 sites <- toupper(colnames(dat.all[3:ncol(dat.all)]))
 colnames(dat.all) <- c("Date", "Time", sites)
 
 dat.yy <- read.csv(paste0(data.dir, "/Data_Cleaned_", yy, "/", watershed, ".", type, ".", yy, ".csv"), header = T)
-dat.yy$Date <- as.Date(dat.yy$Date)
+date.format <- detect.date.format(dat.yy$Date[1])
+dat.yy$Date <- as.Date(dat.yy$Date, format = date.format)
 for(i in 3:ncol(dat.yy)){
   cn <- colnames(dat.yy)[i]
   colnames(dat.yy)[i] <- gsub("_.*","", cn)
