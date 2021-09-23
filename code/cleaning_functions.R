@@ -698,7 +698,7 @@ return(file2keep)
 }
 
 # Organize data as matrix with Date/Time vs Site columns (NAs where no data) and plot
-create.matrix <- function(type, data.dir, cleaned.data.folder, watershed, first.year, date.begin, date.end, numdailyobs)
+create.matrix <- function(type, data.dir, cleaned.data.folder, watershed, first.year, date.begin, date.end, numdailyobs, ylm)
 {
   
 (thefiles <- dir(paste0(data.dir, "/", cleaned.data.folder)))
@@ -732,17 +732,24 @@ for(i in 1:length(thefiles)){
   new.df <- merge(new.df, td[, c("DateTime", "Temp")], by = c("DateTime"), all.x = T)
   colnames(new.df)[i + 3] <- site.name
 }
+
+# sort
+new.df <- new.df[order(new.df$Date, new.df$Time),]
+
+# save
 write.csv(new.df, paste0(data.dir, "/Data_Cleaned_", (first.year + 1), "/", watershed, ".", type, ".", (first.year + 1), ".csv"), row.names = F)
 
 # plot in individual panels to check
 png(paste0(data.dir, "/Data_Cleaned_", (first.year + 1), "/", watershed, ".", type, ".", (first.year + 1), ".png"), width = 16, height = 10, units = "in", res = 300)
 par(mfrow = c(6,8), las = 1, cex = 0.5)
 for(i in 4:(ncol(new.df))){
-  plot(new.df$Date, new.df[,i], type = 'l', ylim = c(-10, 40), main = colnames(new.df)[i], xlab = "", ylab = "")
+  plot(new.df$Date, new.df[,i], type = 'l', ylim = ylm, main = colnames(new.df)[i], xlab = "", ylab = "")
   abline(v = as.Date(paste0(first.year, date.begin)), lty = 2)
   abline(v = as.Date(paste0(first.year + 1, date.end)), lty = 2)
 }
 dev.off()  
+
+cat("Files created.", "\n")
 }
 
 # Merge a year with all other years into Date/Time by Site matrix ####
@@ -783,6 +790,10 @@ for(s in 1:length(thesites)){
 #summary(dat.all.merged)
 #plot(dat.all.merged$Date, dat.all.merged[,3], type = 'l')
 
+# sort
+new.df <- dat.all.merged[order(dat.all.merged$Date, dat.all.merged$Time),]
+
+# save
 write.csv(dat.all.merged, paste0(data.dir, "/", watershed, ".", type, ".allyears_", yy, ".csv"), row.names = F)
 
 # plot in individual panels to check
@@ -793,6 +804,9 @@ for(i in 3:(ncol(dat.all.merged))){
   plot(dat.all.merged$Date, dat.all.merged[,i], type = 'l', ylim = ylm, main = colnames(dat.all.merged)[i], xlab = "", ylab = "")
 }
 dev.off()  
+
+cat("Files created.", "\n")
+
 }
 
 # Read in and prepare raw file exported directly from Onset
