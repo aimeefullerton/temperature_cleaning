@@ -1,5 +1,5 @@
 # Stitch together complete air temperature records
-# Aimee H Fullerton, 21 September 2021
+# Aimee H Fullerton, 23 September 2021
 
 # SETUP ####
 # Load functions
@@ -99,47 +99,4 @@ while(!is.null(i)){
 create.matrix(type = "at", data.dir, cleaned.data.folder, watershed, first.year, date.begin, date.end, numdailyobs)
 
 # Merge with all other years ####
-yy <- first.year + 1
-at.all <- read.csv(paste0(data.dir, "/", watershed, ".at.allyears_", first.year, ".csv"), header = T)
-at.all$Date <- as.Date(at.all$Date, format = "%m/%d/%y")
-sites <- toupper(colnames(at.all[3:ncol(at.all)]))
-colnames(at.all) <- c("Date", "Time", sites)
-
-at.yy <- read.csv(paste0(data.dir, "/Data_Cleaned_", yy, "/", watershed, ".at.", yy, ".csv"), header = T)
-at.yy$Date <- as.Date(at.yy$Date)
-for(i in 3:ncol(at.yy)){
-  cn <- colnames(at.yy)[i]
-  colnames(at.yy)[i] <- gsub("_.*","", cn)
-}
-
-# Merge this year with previous years
-thesites <- sort(intersect(sites, colnames(at.yy)))
-at.all.merged <- matrix(NA, nrow = nrow(at.all) + nrow(at.yy), ncol = (length(sites) + 2))
-at.all.merged <- as.data.frame(at.all.merged)
-colnames(at.all.merged) <- c("Date", "Time", sites)
-at.all.merged$Date <- as.Date("2001-01-01")
-
-at.all.merged[1:nrow(at.all),] <- at.all
-idx <- ((nrow(at.all) + 1) : nrow(at.all.merged))
-at.all.merged$Date[idx] <- at.yy$Date
-at.all.merged$Time[idx] <- at.yy$Time
-
-for(s in 1:length(thesites)){
-  site <- thesites[s]
-  at.all.merged[idx, site] <- at.yy[,site]
-}
-summary(at.all.merged)
-plot(at.all.merged$Date, at.all.merged[,3], type = 'l')
-
-write.csv(at.all.merged, paste0(data.dir, "/", watershed, ".at.allyears.csv"), row.names = F)
-
-# plot in individual panels to check
-png(paste0(data.dir, "/", watershed, ".at.allyears.png"), width = 16, height = 10, units = "in", res = 300)
-par(mfrow = c(6,8), las = 1, cex = 0.5)
-
-for(i in 3:(ncol(at.all.merged))){
-  plot(at.all.merged$Date, at.all.merged[,i], type = 'l', ylim = c(-10, 35), main = colnames(at.all.merged)[i], xlab = "", ylab = "")
-}
-dev.off()  
-
-
+update.allyears(type = "at", data.dir, watershed, first.year)
