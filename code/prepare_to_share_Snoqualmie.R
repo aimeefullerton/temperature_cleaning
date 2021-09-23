@@ -1,19 +1,57 @@
 # Get Snoqualmie watershed water temperature data ready to share on King County's website
-# Aimee H Fullerton, 18 November 2020
+# Aimee H Fullerton, 23 September 2021
 
 data.dir <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Hobonet/Data"
-DataYears<- 2012:2020
+thisyear <- 2021
+DataYears<- 2012:thisyear
 LeapYears<- seq(2008, 2040, 4)
 nYears<- length(DataYears)
 nLeapYrs<- length(intersect(LeapYears, DataYears))
+numdailyobs <- 48
+
+source("code/cleaning_functions.R")
 
 # Load "all data file"
-file <- paste0(data.dir, "/snoqualmie.wt.allyears.csv")
+file <- paste0(data.dir, "/snoqualmie.wt.allyears_", thisyear, ".csv")
 wtdat <- read.csv(file, header = T, stringsAsFactors = F)
-wtdat$Date <- as.Date(wtdat$Date)
-sites <- colnames(wtdat)[4:ncol(wtdat)]
+date.format <- detect.date.format(wtdat$Date[1])
+wtdat$Date <- as.Date(wtdat$Date, format = date.format)
+sites <- colnames(wtdat)[3:ncol(wtdat)]
 summary(wtdat)
 
+# Remove sites that are no longer operational
+decommissioned.sites <- c("B1", "E1", "I1", "L1", "L2", "M1", "R2", "R4", "MS7", "T2", "T4", "F1.R", "MS10.R", "MF4")
+if(!is.null(decommissioned.sites)){
+  idx <- which(colnames(wtdat) %in% decommissioned.sites)
+  wtdat <- wtdat[,-idx]
+  colnames(wtdat)
+  sites <- sites[!sites %in% decommissioned.sites]
+}
+
+# Add water year column
+wtdat$WaterYear <- NA
+for(yy in c(DataYears[1] - 1, DataYears)){
+  wtdat$WaterYear[wtdat$Date >= as.Date(paste0(yy - 1, "-10-01")) & wtdat$Date <= as.Date(paste0(yy, "-12-31"))] <- yy
+}
+#nrow(wtdat[wtdat$WaterYear == thisyear,])
+
+wtdat$Time2 <- time.stamp(wtdat$Time)
+range(wtdat$Date[!is.na(wtdat[,3])])
+
+# Output individual site files
+for(site in sites){
+  idx <- which(colnames(wtdat) == site)
+  td <- wtdat[,c("WaterYear", "Date", "Time", "Time2", site)]
+  td <- td[order(td$Date, td$Time),]
+  td <- td[,-3]
+  colnames(td)[3] <- "Time"
+  colnames(td)[4] <- "Temp_C"
+  write.csv(td, paste0(data.dir, "/Data2Share/NOAA_", site,".csv"), row.names = F, na = "")
+}  
+
+summary(td[td$WaterYear == thisyear,]) #to examine
+
+# end of script
 
 
 # # Worth keeping Griffin replacement? It's a duplicate
@@ -47,43 +85,5 @@ summary(wtdat)
 # plot(wtdat$MS8, wtdat$MS7)
 # # Keep; they are separate locations with short time series
 
-# Remove the duplicate sites
-idx <- which(colnames(wtdat) %in% c("F1.r", "MS10.r"))
-wtdat <- wtdat[,-idx]
-colnames(wtdat)
-sites <- sites[!sites %in% c("F1.r", "MS10.r")]
+# Other sites were decommissioned in September of 2020 due to logistics with keeping that many loggers going
 
-# Add water year column
-wtdat$WaterYear <- NA
-for(yy in c(DataYears[1] - 1, DataYears)){
-  wtdat$WaterYear[wtdat$Date >= as.Date(paste0(yy - 1, "-10-01")) & wtdat$Date <= as.Date(paste0(yy, "-12-31"))] <- yy
-}
-#nrow(wtdat[wtdat$WaterYear == 2018,])
-
-# Add time stamp column
-fncTimeStamp <- function(x){
-  thehour <- floor(x)
-  theminutes <- substr(x%%2, 3, 3)
-  theminutes[theminutes == ""] <- "00"
-  theminutes[theminutes == "5"] <- "30"
-  answer <- paste0(thehour, ":", theminutes, ":00 PDT")
-  return(answer)
-}
-
-wtdat$Time2 <- fncTimeStamp(wtdat$Time)
-range(wtdat$Date[!is.na(wtdat$D1)])
-
-# Output individual site files
-for(site in sites){
-  idx <- which(colnames(wtdat) == site)
-  td <- wtdat[,c("WaterYear", "Date", "Time", "Time2", site)]
-  td <- td[order(td$Date, td$Time),]
-  td <- td[,-3]
-  colnames(td)[3] <- "Time"
-  colnames(td)[4] <- "Temp_C"
-  write.csv(td, paste0(data.dir, "/Data2Share/NOAA_", site,".csv"), row.names = F, na = "")
-}  
-
-summary(td[td$WaterYear == 2019,]) #to examine
-
-# end of script

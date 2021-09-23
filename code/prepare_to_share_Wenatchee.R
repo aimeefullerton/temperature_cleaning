@@ -1,42 +1,43 @@
 # Get temperature data ready to share
-# Aimee H Fullerton, 18 November 2020
+# Aimee H Fullerton, 23 September 2021
 
 data.dir <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Wenatchee/NOAA-USFS"
-DataYears<- 2018:2020
+thisyear <- 2021
+DataYears<- 2019:thisyear
 LeapYears<- seq(2018, 2040, 4)
 nYears<- length(DataYears)
 nLeapYrs<- length(intersect(LeapYears, DataYears))
+numdailyobs <- 24
+
+source("code/cleaning_functions.R")
 
 # Load "all data file"
-file <- paste0(data.dir1, "/wenatchee.wt.allyears.csv")
+file <- paste0(data.dir, "/wenatchee.wt.allyears_", thisyear, ".csv")
 wtdat <- read.csv(file, header = T, stringsAsFactors = F)
-wtdat$Date <- as.Date(wtdat$Date)
+date.format <- detect.date.format(wtdat$Date[1])
+wtdat$Date <- as.Date(wtdat$Date, format = date.format)
 sites <- colnames(wtdat[3:ncol(wtdat)])
-sites <- gsub("_.*","", sites)
 colnames(wtdat) <- c("Date", "Time", sites)
 summary(wtdat)
 
-
+# Remove sites that are no longer operational
+decommissioned.sites <- NULL
+if(!is.null(decommissioned.sites)){
+  idx <- which(colnames(wtdat) %in% decommissioned.sites)
+  wtdat <- wtdat[,-idx]
+  colnames(wtdat)
+  sites <- sites[!sites %in% decommissioned.sites]
+}
 
 # Add water year column
 wtdat$WaterYear <- NA
 for(yy in c(DataYears[1] - 1, DataYears)){
   wtdat$WaterYear[wtdat$Date >= as.Date(paste0(yy - 1, "-10-01")) & wtdat$Date <= as.Date(paste0(yy, "-12-31"))] <- yy
 }
-#nrow(wtdat[wtdat$WaterYear == 2018,])
+#nrow(wtdat[wtdat$WaterYear == thisyear,])
 
-# Add time stamp column
-fncTimeStamp <- function(x){
-  thehour <- floor(x)
-  theminutes <- substr(x%%2, 3, 3)
-  theminutes[theminutes == ""] <- "00"
-  theminutes[theminutes == "5"] <- "30"
-  answer <- paste0(thehour, ":", theminutes, ":00 PDT")
-  return(answer)
-}
-
-wtdat$Time2 <- fncTimeStamp(wtdat$Time)
-range(wtdat$Date[!is.na(wtdat$D1)])
+wtdat$Time2 <- time.stamp(wtdat$Time)
+range(wtdat$Date[!is.na(wtdat[,3])])
 
 # Output individual site files
 for(site in sites){
@@ -46,9 +47,9 @@ for(site in sites){
   td <- td[,-3]
   colnames(td)[3] <- "Time"
   colnames(td)[4] <- "Temp_C"
-  write.csv(td, paste0(data.dir1, "/Data2Share/NOAA-USFS_", site,".csv"), row.names = F, na = "")
+  write.csv(td, paste0(data.dir, "/Data2Share/NOAA-USFS_", site,".csv"), row.names = F, na = "")
 }  
 
-summary(td[td$WaterYear == 2019,]) #to examine
+summary(td[td$WaterYear == thisyear,]) #to examine
 
 # end of script
