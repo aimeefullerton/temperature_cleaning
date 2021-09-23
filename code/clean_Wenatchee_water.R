@@ -212,4 +212,4 @@ write.csv(td4, paste0(data.dir1, "/", watershed, ".wt", yy, ".csv"), row.names =
 
 
 # Merge with all other years ####
-update.allyears(type = "wt", data.dir, watershed, first.year)
+update.allyears(type = "wt", data.dir, watershed, first.year, ylm = c(-5, 25))

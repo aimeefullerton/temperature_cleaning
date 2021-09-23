@@ -746,7 +746,7 @@ dev.off()
 }
 
 # Merge a year with all other years into Date/Time by Site matrix ####
-update.allyears <- function(type, data.dir, watershed, first.year)
+update.allyears <- function(type, data.dir, watershed, first.year, ylm)
 {
   
 yy <- first.year + 1
@@ -780,8 +780,8 @@ for(s in 1:length(thesites)){
   site <- thesites[s]
   dat.all.merged[idx, site] <- dat.yy[,site]
 }
-summary(dat.all.merged)
-plot(dat.all.merged$Date, dat.all.merged[,3], type = 'l')
+#summary(dat.all.merged)
+#plot(dat.all.merged$Date, dat.all.merged[,3], type = 'l')
 
 write.csv(dat.all.merged, paste0(data.dir, "/", watershed, ".", type, ".allyears_", yy, ".csv"), row.names = F)
 
@@ -790,7 +790,7 @@ png(paste0(data.dir, "/", watershed, ".", type, ".allyears_", yy, ".png"), width
 par(mfrow = c(6,8), las = 1, cex = 0.5)
 
 for(i in 3:(ncol(dat.all.merged))){
-  plot(dat.all.merged$Date, dat.all.merged[,i], type = 'l', ylim = c(-10, 35), main = colnames(dat.all.merged)[i], xlab = "", ylab = "")
+  plot(dat.all.merged$Date, dat.all.merged[,i], type = 'l', ylim = ylm, main = colnames(dat.all.merged)[i], xlab = "", ylab = "")
 }
 dev.off()  
 }

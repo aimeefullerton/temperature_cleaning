@@ -99,4 +99,4 @@ while(!is.null(i)){
 create.matrix(type = "at", data.dir, cleaned.data.folder, watershed, first.year, date.begin, date.end, numdailyobs)
 
 # Merge with all other years ####
-update.allyears(type = "at", data.dir, watershed, first.year)
+update.allyears(type = "at", data.dir, watershed, first.year, ylm = c(-10, 35))
