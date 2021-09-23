@@ -1,5 +1,5 @@
 # Clean temperature data files to remove erroneous readings (e.g. from air, sediment, or ice)
-# Aimee H Fullerton, 22 September 2021
+# Aimee H Fullerton, 23 September 2021
 
 # SETUP ####
 # Load functions
@@ -212,4 +212,4 @@ write.csv(td4, paste0(data.dir1, "/", watershed, ".wt", yy, ".csv"), row.names =
 
 
 # Merge with all other years ####
-update.allyears(type = "wt", data.dir, watershed, first.year)
+update.allyears(type = "wt", data.dir, watershed, first.year, ylm = c(-5, 25))
