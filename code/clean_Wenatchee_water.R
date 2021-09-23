@@ -173,7 +173,7 @@ while(!is.null(i)){
 }
 
 # Create a matrix of this year's data and plot each site's time series individually ####
-create.matrix(type = "wt", data.dir, cleaned.data.folder, watershed, first.year, date.begin, date.end, numdailyobs)
+create.matrix(type = "wt", data.dir, cleaned.data.folder, watershed, first.year, date.begin, date.end, numdailyobs, ylm = c(-5, 25))
 # Bring NOAA-USFS and WDFW data together ####
 
 td1 <- read.csv(paste0("NOAA-USFS/Data_Cleaned_", yy, "/", watershed, ".wt.", yy, ".csv"), header = TRUE, stringsAsFactors = FALSE)

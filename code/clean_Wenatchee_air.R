@@ -96,7 +96,7 @@ while(!is.null(i)){
 }
 
 # Create a matrix of this year's data and plot each site's time series individually ####
-create.matrix(type = "at", data.dir, cleaned.data.folder, watershed, first.year, date.begin, date.end, numdailyobs)
+create.matrix(type = "at", data.dir, cleaned.data.folder, watershed, first.year, date.begin, date.end, numdailyobs, ylm = c(-10, 35))
 
 # Merge with all other years ####
 update.allyears(type = "at", data.dir, watershed, first.year, ylm = c(-10, 35))
