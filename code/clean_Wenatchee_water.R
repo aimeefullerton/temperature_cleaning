@@ -172,8 +172,54 @@ while(!is.null(i)){
   cat(paste0("All done with ", site, "!"), "\n")
 }
 
-# Create a matrix of this year's data and plot each site's time series individually ####
-create.matrix(type = "wt", data.dir, cleaned.data.folder, watershed, first.year, date.begin, date.end, numdailyobs)
+# Organize data as matrix with Date and Site columns; NAs where no data ####
+# helpful for use in SSN models
+(thefiles <- dir(paste0(data.dir, "/", cleaned.data.folder)))
+
+dates <- seq(from = as.Date(paste0(first.year, date.begin)), to = as.Date(paste0(first.year + 1, date.end)), by = 1)
+new.df <- data.frame(matrix(NA, nrow = length(dates) * numdailyobs, ncol = 2))
+colnames(new.df) <- c("Date", "Time")
+new.df$Date <- rep(dates, numdailyobs)
+new.df <- new.df[order(new.df$Date),]
+if(numdailyobs == 48){
+  new.df$Time <- rep(seq(0, 23.5, 0.5), length(dates))
+} else{
+  new.df$Time <- rep(seq(0, 23, 1), length(dates))
+}
+foo <- paste0(new.df$Date, " ", sprintf("%02d", floor(new.df$Time)), ":00")
+if(numdailyobs == 48) foo[seq(2, length(foo), 2)] <- gsub(":00", ":30", foo[seq(2, length(foo), 2)])
+new.df$DateTime <- as.POSIXlt( foo, format = "%Y-%m-%d %H:%M")
+row.names(new.df) <- NULL
+
+for(i in 1:length(thefiles)){
+  #site.name <- gsub("_.*","", thefiles[i])
+  site.name <- gsub(".csv","",thefiles[i])
+  td <- read.csv(paste0(data.dir, "/", cleaned.data.folder, "/", thefiles[i]), header = T, stringsAsFactors = F)
+  # Add "DateTime" column if needed
+  if(!"DateTime" %in% colnames(td)){
+    foo <- paste0(td$Date, " ", sprintf("%02d", floor(td$Time)), ":00")
+    if(numdailyobs == 48) foo[seq(2, length(foo), 2)] <- gsub(":00", ":30", foo[seq(2, length(foo), 2)])
+    td$DateTime <- as.POSIXlt( foo, format = "%Y-%m-%d %H:%M")
+    rm(foo)
+    colnames(td)[3] <- "Temp"
+  }
+  new.df <- merge(new.df, td[, c("DateTime", "Temp")], by = c("DateTime"), all.x = T)
+  colnames(new.df)[i + 3] <- site.name
+}
+write.csv(new.df, paste0(data.dir, "/Data_Cleaned_", (first.year + 1), "/", watershed, ".wt.", (first.year + 1), ".csv"), row.names = F)
+
+# plot in individual panels to check
+png(paste0(data.dir, "/Data_Cleaned_", (first.year + 1), "/", watershed, ".wt.", (first.year + 1), ".png"), width = 16, height = 10, units = "in", res = 300)
+par(mfrow = c(6,8), las = 1, cex = 0.5)
+for(i in 4:(ncol(new.df))){
+  plot(new.df$Date, new.df[,i], type = 'l', ylim = c(-5, 25), main = colnames(new.df)[i], xlab = "", ylab = "")
+  abline(v = as.Date(paste0(first.year, date.begin)), lty = 2)
+  abline(v = as.Date(paste0(first.year + 1, date.end)), lty = 2)
+}
+dev.off()  
+
+
+
 # Bring NOAA-USFS and WDFW data together ####
 
 td1 <- read.csv(paste0("NOAA-USFS/Data_Cleaned_", yy, "/", watershed, ".wt.", yy, ".csv"), header = TRUE, stringsAsFactors = FALSE)
@@ -213,10 +259,10 @@ write.csv(td4, paste0(data.dir1, "/", watershed, ".wt", yy, ".csv"), row.names =
 
 # Merge with all other years ####
 yy <- first.year + 1
-wt.all <- read.csv(paste0(data.dir, "/", watershed, ".wt.allyears_", first.year, ".csv"), header = T)
-wt.all$Date <- as.Date(wt.all$Date, format = "%m/%d/%y")
-sites <- toupper(colnames(wt.all[3:ncol(wt.all)]))
-colnames(wt.all) <- c("Date", "Time", sites)
+wt.all <- read.csv(paste0(data.dir, "/", watershed, ".wt.allyears.csv"), header = T)
+wt.all$Date <- as.Date(wt.all$Date)
+sites <- colnames(wt.all[3:ncol(wt.all)])
+sites <- toupper(sites)
 
 wt.yy <- read.csv(paste0(data.dir, "/Data_Cleaned_", yy, "/", watershed, ".wt.", yy, ".csv"), header = T)
 wt.yy$Date <- as.Date(wt.yy$Date)
@@ -227,7 +273,7 @@ thesites <- sort(intersect(sites, colnames(wt.yy)))
 wt.all.merged <- matrix(NA, nrow = nrow(wt.all) + nrow(wt.yy), ncol = (length(sites) + 2))
 wt.all.merged <- as.data.frame(wt.all.merged)
 colnames(wt.all.merged) <- c("Date", "Time", sites)
-wt.all.merged$Date <- as.Date("2001-01-01")
+wt.all.merged$Date <- as.Date("01/01/01", "%m/%d/%y")
 
 wt.all.merged[1:nrow(wt.all),] <- wt.all
 idx <- ((nrow(wt.all) + 1) : nrow(wt.all.merged))
@@ -239,7 +285,7 @@ for(s in 1:length(thesites)){
   wt.all.merged[idx, site] <- wt.yy[,site]
 }
 summary(wt.all.merged)
-plot(wt.all.merged$Date, wt.all.merged[,4], type = 'l')
+plot(wt.all.merged$Date, wt.all.merged$D1, type = 'l')
 
 write.csv(wt.all.merged, paste0(data.dir, "/", watershed, ".wt.allyears.csv"), row.names = F)
 

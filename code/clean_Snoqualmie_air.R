@@ -23,7 +23,7 @@ oldfiles <- dir(paste0(data.dir, "/", old.data.folder))
 thefiles <- dir(paste0(data.dir, "/", raw.data.folder))
 oldfiles <- toupper(oldfiles); thefiles <- toupper(thefiles)
 
-# Stitch together sites; process individually ####
+# PROCESS SITES INDIVIDUALLY ####
 thefiles # Look at 'thefiles' and pick sites one manually
 i <- 1
 while(!is.null(i)){
@@ -93,8 +93,52 @@ while(!is.null(i)){
   cat(paste0("All done with ", site, "!"), "\n")
 }
   
-# Create a matrix of this year's data and plot each site's time series individually ####
-create.matrix(type = "at", data.dir, cleaned.data.folder, watershed, first.year, date.begin, date.end, numdailyobs)
+# Organize data as matrix with Date and Site columns; NAs where no data ####
+  # helpful for use in SSN models
+  (thefiles <- dir(paste0(data.dir, "/", cleaned.data.folder)))
+
+  dates <- seq(from = as.Date(paste0(first.year, date.begin)), to = as.Date(paste0(first.year + 1, date.end)), by = 1)
+  new.df <- data.frame(matrix(NA, nrow = length(dates) * numdailyobs, ncol = 2))
+  colnames(new.df) <- c("Date", "Time")
+  new.df$Date <- rep(dates, numdailyobs)
+  new.df <- new.df[order(new.df$Date),]
+  if(numdailyobs == 48){
+    new.df$Time <- rep(seq(0, 23.5, 0.5), length(dates))
+  } else{
+    new.df$Time <- rep(seq(0, 23, 1), length(dates))
+  }
+  foo <- paste0(new.df$Date, " ", sprintf("%02d", floor(new.df$Time)), ":00")
+  if(numdailyobs == 48) foo[seq(2, length(foo), 2)] <- gsub(":00", ":30", foo[seq(2, length(foo), 2)])
+  new.df$DateTime <- as.POSIXlt( foo, format = "%Y-%m-%d %H:%M")
+  row.names(new.df) <- NULL
+  
+  for(i in 1:length(thefiles)){
+    site.name <- gsub(".csv","",thefiles[i])
+    td <- read.csv(paste0(data.dir, "/", cleaned.data.folder, "/", thefiles[i]), header = T, stringsAsFactors = F)
+    # Add "DateTime" column if needed
+    if(!"DateTime" %in% colnames(td)){
+      foo <- paste0(td$Date, " ", sprintf("%02d", floor(td$Time)), ":00")
+      if(numdailyobs == 48) foo[seq(2, length(foo), 2)] <- gsub(":00", ":30", foo[seq(2, length(foo), 2)])
+      td$DateTime <- as.POSIXlt( foo, format = "%Y-%m-%d %H:%M")
+      rm(foo)
+      colnames(td)[3] <- "Temp"
+    }
+    new.df <- merge(new.df, td[, c("DateTime", "Temp")], by = c("DateTime"), all.x = T)
+    colnames(new.df)[i + 3] <- site.name
+  }
+  write.csv(new.df, paste0(data.dir, "/Data_Cleaned_", (first.year + 1), "/", watershed, ".at.", (first.year + 1), ".csv"), row.names = F)
+  
+  # plot in individual panels to check
+  png(paste0(data.dir, "/Data_Cleaned_", (first.year + 1), "/", watershed, ".at.", (first.year + 1), ".png"), width = 16, height = 10, units = "in", res = 300)
+  par(mfrow = c(6,8), las = 1, cex = 0.5)
+  for(i in 4:(ncol(new.df))){
+    plot(new.df$Date, new.df[,i], type = 'l', ylim = c(-5, 35), main = colnames(new.df)[i], xlab = "", ylab = "")
+    abline(v = as.Date(paste0(first.year, date.begin)), lty = 2)
+    abline(v = as.Date(paste0(first.year + 1, date.end)), lty = 2)
+  }
+  dev.off()  
+  
+  
 # Merge with all other years ####
 yy <- first.year + 1
 #at.all <- read.csv(paste0(data.dir, "/", watershed, ".at.earlyyears.csv"), header = T)
