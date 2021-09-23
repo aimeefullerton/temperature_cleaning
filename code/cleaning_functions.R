@@ -665,6 +665,17 @@ get_value <- function(mykey, mylookupvector)
   return(myvalue)
 }
 
+# Add time stamp column
+time.stamp <- function(x)
+{
+  thehour <- floor(x)
+  theminutes <- substr(x%%2, 3, 3)
+  theminutes[theminutes == ""] <- "00"
+  theminutes[theminutes == "5"] <- "30"
+  answer <- paste0(thehour, ":", theminutes, ":00 PDT")
+  return(answer)
+}
+
 # Ensure the timeseries has a complete set of dates/times even if temperatures are NA
 fill.time.series <- function(time.series, first.year, date.begin, date.end, numdailyobs)
 {
