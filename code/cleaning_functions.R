@@ -321,7 +321,7 @@ get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyob
   while(is.null(last.obs)){
     xlm <- c((oldfile2keep$DateTime[oldfile2keep$Date == ddate][1] - (numdailyobs * 2500)), (oldfile2keep$DateTime[oldfile2keep$Date == ddate][1] + (numdailyobs * 2500)))
     plot(oldfile2keep$DateTime[obs.week1], oldfile2keep$Temp[obs.week1], xlab = "Observation", ylab = "Temperature (C)", 
-         main = paste("Pick the LAST obs from the OLD timeseries near transition date ", as.character(ddate)), ylim = c(0,30), 
+         main = paste("Pick the LAST obs from the OLD timeseries near transition date ", as.character(ddate)), ylim = c(0,35), 
          xlim = xlm)
     points(newfile2keep$DateTime[obs.week2], newfile2keep$Temp[obs.week2], col = 2)
     obs <- identify(oldfile2keep$DateTime[obs.week1], oldfile2keep$Temp[obs.week1], n = 1)
@@ -337,7 +337,7 @@ get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyob
   while(is.null(first.obs)){
     xlm <- c((newfile2keep$DateTime[newfile2keep$Date == ddate][1] - (numdailyobs * 2500)), (newfile2keep$DateTime[newfile2keep$Date == ddate][1] + (numdailyobs * 2500)))
     plot(oldfile2keep$DateTime[obs.week1], oldfile2keep$Temp[obs.week1], xlab = "Observation", ylab = "Temperature (C)", 
-         main = paste("Pick the FIRST obs from the NEW timeseries near transition date ", as.character(ddate)), ylim = c(0,30), 
+         main = paste("Pick the FIRST obs from the NEW timeseries near transition date ", as.character(ddate)), ylim = c(0,35), 
          xlim = xlm)
     points(newfile2keep$DateTime[obs.week2], newfile2keep$Temp[obs.week2], col = 2)
     obs <- identify(newfile2keep$DateTime[obs.week2], newfile2keep$Temp[obs.week2], n = 1)
@@ -349,7 +349,7 @@ get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyob
   }
   if(first.obs == 1 & !ddate %in% newfile2keep$Date){
     plot(newfile2keep$DateTime[obs.week2], newfile2keep$Temp[obs.week2], xlab = "Observation", ylab = "Temperature (C)", 
-         main = paste("Pick the FIRST obs from the NEW timeseries near transition date ", as.character(ddate)), ylim = c(0,30), col = 2)
+         main = paste("Pick the FIRST obs from the NEW timeseries near transition date ", as.character(ddate)), ylim = c(0,35), col = 2)
     obs <- identify(newfile2keep$DateTime[obs.week2], newfile2keep$Temp[obs.week2], n = 1)
     points(newfile2keep$DateTime[obs], newfile2keep$Temp[obs], col = 2, pch = 19, cex = 1.2)
     
@@ -361,7 +361,7 @@ get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyob
   (first.date <- newfile2keep$DateTime[first.obs])
   newfile2keep <- newfile2keep[newfile2keep$DateTime >= first.date,]
   plot(oldfile2keep$DateTime[obs.week1], oldfile2keep$Temp[obs.week1], xlab = "Observation", ylab = "Temperature (C)", 
-       main = paste("Pick the FIRST obs from the NEW timeseries near transition date ", as.character(ddate)), ylim = c(0,30), 
+       main = paste("Pick the FIRST obs from the NEW timeseries near transition date ", as.character(ddate)), ylim = c(0,35), 
        xlim = xlm)
   points(newfile2keep$DateTime[obs.week2], newfile2keep$Temp[obs.week2], col = 2)
   
@@ -389,6 +389,143 @@ get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyob
   
   # Plot and print diagnostics
   plot(file2keep$Date, file2keep$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
+  abline(v = as.Date(paste0(first.year, date.begin)), lty = 2)
+  abline(v = as.Date(paste0(first.year + 1, date.end)), lty = 2)
+  
+  print(summary(file2keep[!is.na(file2keep$Temp),]))
+  cat("number of records: ", nrow(file2keep), "\n")
+  cat("number of obs: ", nrow(file2keep[!is.na(file2keep$Temp),]), "\n")
+  cat("summary of transition date ", as.character(ddate), ": ", "\n")
+  print(summary(file2keep$Temp[file2keep$Date == ddate], na.rm = T))
+  
+  return(file2keep)
+}
+
+# Stitch together raw data from this year and raw data from previous fall
+# (helpful if data were downloaded before the end of the water year)
+backfill.previous.fall <- function(file2update, file2copyfrom, theyear, numdailyobs, date.begin = "-09-01", date.end = "-08-31")
+{
+  # Create empty dataframe with all dates/times
+  dates <- seq(from = as.Date(paste0(theyear, date.begin)), to = as.Date(paste0(theyear + 1, date.end)), by = 1)
+  file2keep <- data.frame(matrix(NA, nrow = length(dates) * numdailyobs, ncol = 3))
+  colnames(file2keep) <- c("Date", "Time", "Temp")
+  file2keep$Date <- rep(dates, numdailyobs)
+  file2keep <- file2keep[order(file2keep$Date),]
+  if(numdailyobs == 48){
+    file2keep$Time <- rep(seq(0, 23.5, 0.5), length(dates))
+  } else if(numdailyobs == 24){
+    file2keep$Time <- rep(seq(0, 23, 1), length(dates))
+  }
+  foo <- paste0(file2keep$Date, " ", sprintf("%02d", floor(file2keep$Time)), ":00")
+  if(numdailyobs == 48) foo[seq(2, length(foo), 2)] <- gsub(":00", ":30", foo[seq(2, length(foo), 2)])
+  file2keep$DateTime <- as.POSIXlt( foo, format = "%Y-%m-%d %H:%M")
+  row.names(file2keep) <- NULL
+  
+  # Pick transition date for stitching together
+  ddate <- readline("What is the transition date (as yyyy-mm-dd)? Leave blank and hit enter if unknown: ")
+  if(ddate != ""){
+    ddate <- as.Date(ddate)
+  } else {
+    ddate <- max(file2update$Date[!is.na(file2update$Temp)]) #if not known, assume the old logger was stopped when it was pulled out
+  }
+  cat("You have selected", as.character(ddate), "\n")
+  check <- readline("Is this correct? (y or n) ")
+  if (check == 'n'){
+    ddate <- readline("Enter a preferred transition date (as yyyy-mm-dd)?: ")
+    ddate <- as.Date(ddate)
+  }			
+  
+  
+  # Clip old and new datasets to correct dates
+  file2update <- file2update[file2update$Date <= ddate,]
+  file2copyfrom <- file2copyfrom[file2copyfrom$Date >= ddate & file2copyfrom$Date <= as.Date(paste0((theyear + 1), date.end)),]
+  
+  last.obs <- NULL
+  first.obs <- NULL
+  # Error handling
+  if(nrow(file2copyfrom) > 0) { #only process if this file has records
+    if(!ddate %in% file2update$Date){
+      last.obs <- which(file2update$DateTime == max(file2update$DateTime, na.rm = T))
+    }
+    if(!ddate %in% file2copyfrom$Date){
+      first.obs <- which(file2copyfrom$DateTime == min(file2copyfrom$DateTime, na.rm = T))
+    } 
+    
+    # Plot to see and pick the exact time of the switch
+    obs.week1 <- which(file2update$Date == ddate)[1]
+    obs.week1 <- seq(from = obs.week1 - numdailyobs, length.out = (numdailyobs*3), by = 1)
+    obs.week1 <- intersect(obs.week1, obs.week1[1]:length(file2update$Temp))
+    if(length(file2copyfrom$Date[file2copyfrom$Date == ddate]) > 1) obs.week2 <- which(file2copyfrom$Date == ddate)[1] else obs.week2 <- 1
+    obs.week2 <- seq(from = obs.week2, length.out = (numdailyobs*2), by = 1)
+    
+    while(is.null(last.obs)){
+      xlm <- c((file2update$DateTime[file2update$Date == ddate][1] - (numdailyobs * 2500)), (file2update$DateTime[file2update$Date == ddate][1] + (numdailyobs * 2500)))
+      plot(file2update$DateTime[obs.week1], file2update$Temp[obs.week1], xlab = "Observation", ylab = "Temperature (C)", 
+           main = paste("Pick the LAST obs from the OLD timeseries near transition date ", as.character(ddate)), ylim = c(0,35), 
+           xlim = xlm)
+      points(file2copyfrom$DateTime[obs.week2], file2copyfrom$Temp[obs.week2], col = 2)
+      obs <- identify(file2update$DateTime[obs.week1], file2update$Temp[obs.week1], n = 1)
+      points(file2update$DateTime[obs.week1[1] + obs - 1], file2update$Temp[obs.week1[1] + obs - 1], pch = 19, cex = 1.2)
+      
+      cat("You have selected", as.character(file2update$DateTime[obs.week1[1] + obs - 1]), "\n")
+      check <- readline("Does this look correct? (y or n) ")
+      if (check == 'y'){last.obs <- obs.week1[1] + obs - 1}			
+    }
+    (last.date <- file2update$DateTime[last.obs])
+    file2update <- file2update[file2update$DateTime <= last.date,]
+    
+    while(is.null(first.obs)){
+      xlm <- c((file2copyfrom$DateTime[file2copyfrom$Date == ddate][1] - (numdailyobs * 2500)), (file2copyfrom$DateTime[file2copyfrom$Date == ddate][1] + (numdailyobs * 2500)))
+      plot(file2update$DateTime[obs.week1], file2update$Temp[obs.week1], xlab = "Observation", ylab = "Temperature (C)", 
+           main = paste("Pick the FIRST obs from the NEW timeseries near transition date ", as.character(ddate)), ylim = c(0,35), 
+           xlim = xlm)
+      points(file2copyfrom$DateTime[obs.week2], file2copyfrom$Temp[obs.week2], col = 2)
+      obs <- identify(file2copyfrom$DateTime[obs.week2], file2copyfrom$Temp[obs.week2], n = 1)
+      points(file2copyfrom$DateTime[obs], file2copyfrom$Temp[obs], col = 2, pch = 19, cex = 1.2)
+      
+      cat("You have selected", as.character(file2copyfrom$DateTime[obs]), "\n")
+      check <- readline("Does this look correct? (y or n) ")
+      if (check == 'y'){first.obs <- obs}			
+    }
+    if(first.obs == 1 & !ddate %in% file2copyfrom$Date){
+      plot(file2copyfrom$DateTime[obs.week2], file2copyfrom$Temp[obs.week2], xlab = "Observation", ylab = "Temperature (C)", 
+           main = paste("Pick the FIRST obs from the NEW timeseries near transition date ", as.character(ddate)), ylim = c(0,35), col = 2)
+      obs <- identify(file2copyfrom$DateTime[obs.week2], file2copyfrom$Temp[obs.week2], n = 1)
+      points(file2copyfrom$DateTime[obs], file2copyfrom$Temp[obs], col = 2, pch = 19, cex = 1.2)
+      
+      cat("You have selected", as.character(file2copyfrom$DateTime[obs]), "\n")
+      check <- readline("Does this look correct? (y or n) ")
+      if (check == 'y'){first.obs <- obs}			
+      
+    }
+    (first.date <- file2copyfrom$DateTime[first.obs])
+    file2copyfrom <- file2copyfrom[file2copyfrom$DateTime >= first.date,]
+    plot(file2update$DateTime[obs.week1], file2update$Temp[obs.week1], xlab = "Observation", ylab = "Temperature (C)", 
+         main = paste("Pick the FIRST obs from the NEW timeseries near transition date ", as.character(ddate)), ylim = c(0,35), 
+         xlim = xlm)
+    points(file2copyfrom$DateTime[obs.week2], file2copyfrom$Temp[obs.week2], col = 2)
+    
+    # Merge
+    file2keep <- merge(file2keep[, c("DateTime", "Date", "Time")], file2update[, c("DateTime", "Temp")], by = "DateTime", all.x = T)
+    file2keep <- merge(file2keep, file2copyfrom[,c("DateTime", "Temp")], by = "DateTime", all.x = T)
+    file2keep$Temp[!is.na(file2keep$Temp.x)] <- file2keep$Temp.x[!is.na(file2keep$Temp.x)]
+    file2keep$Temp[!is.na(file2keep$Temp.y)] <- file2keep$Temp.y[!is.na(file2keep$Temp.y)]
+    file2keep <- unique(file2keep)
+    file2keep <- file2keep[order(file2keep$Date, file2keep$Time),]
+    file2keep <- file2keep[, c("DateTime", "Date", "Time", "Temp")]
+    # NAs might happen if there was a bad battery warning.
+    
+  } else {
+    cat("There are no data for the missing period in the new year's file. Keeping existing file.", "\n")
+    file2keep <- file2update
+  } #END empty file2update
+  
+  
+  # Plot and print diagnostics
+  plot(file2keep$Date, file2keep$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
+  abline(v = as.Date(paste0(theyear, date.begin)), lty = 2)
+  abline(v = as.Date(paste0(first.year, date.end)), lty = 2)
+  
   print(summary(file2keep[!is.na(file2keep$Temp),]))
   cat("number of records: ", nrow(file2keep), "\n")
   cat("number of obs: ", nrow(file2keep[!is.na(file2keep$Temp),]), "\n")
