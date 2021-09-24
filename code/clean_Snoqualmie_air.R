@@ -1,5 +1,5 @@
 # Stitch together complete air temperature records
-# Aimee H Fullerton, 23 September 2021
+# Aimee H Fullerton, 24 September 2021
 
 # SETUP ####
 # Load functions
@@ -12,9 +12,10 @@ first.year <- 2020
 date.begin <- "-09-01"
 date.end <- "-08-31"
 data.dir <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Hobonet/Data"
-raw.data.folder <- paste0("Data_Raw_Sep", (first.year + 1), "/air")
-old.data.folder <- paste0("Data_Raw_Sep", first.year, "/air")
-cleaned.data.folder <- paste0("Data_Cleaned_", (first.year + 1), "/air")
+data.type <- "air"
+raw.data.folder <- paste0("Data_Raw_Sep", (first.year + 1), "/", data.type)
+old.data.folder <- paste0("Data_Raw_Sep", first.year, "/", data.type)
+cleaned.data.folder <- paste0("Data_Cleaned_", (first.year + 1), "/", data.type)
 if(!dir.exists(paste0(data.dir, "/", cleaned.data.folder))){
   dir.create(paste0(data.dir, "/Data_Cleaned_", (first.year + 1)), showWarnings = F)
   dir.create(paste0(data.dir, "/", cleaned.data.folder), showWarnings = F)
@@ -98,3 +99,73 @@ create.matrix(type = "at", data.dir, cleaned.data.folder, watershed, first.year,
 
 # Merge with all other years ####
 update.allyears(type = "at", data.dir, watershed, first.year, ylm = c(-10, 35))
+
+# Back-fill data into last year's records for sites that were downloaded before 1 September ####
+  # Enter a list of the sites that need to be updated
+thesites <- c("C1", "C2", "MF1", "MF2", "MF3", "D1", "F1", "MS10", "T1", "R5a", "SF1", "SF2", "SF3", "K1", "L3", "R3", "R1", "MF5", "MF6", "MS4", "MS5", "MS6", "MS8", "MS9")
+i <- 1
+while(!is.null(i)){
+  site <- thesites[i]
+  cat(site, "\n")
+  
+  # Load cleaned data for site from last year
+  if(paste0(site, ".csv") %in% dir(paste0(data.dir, "/Data_Cleaned_", first.year, "/", data.type, "/"))) {
+    file2update <- read.csv(paste0(data.dir, "/Data_Cleaned_", first.year, "/", data.type, "/", site, ".csv"), header = T, stringsAsFactors = F)
+    file2update$Date <- as.Date(file2update$Date)
+    file2update <- file2update[order(file2update$Date, file2update$Time),]
+    # Add "DateTime" column if needed
+    if(!"DateTime" %in% colnames(file2update)){
+      foo <- paste0(file2update$Date, " ", sprintf("%02d", floor(file2update$Time)), ":00")
+      if(numdailyobs == 48) foo[seq(2, length(foo), 2)] <- gsub(":00", ":30", foo[seq(2, length(foo), 2)])
+      file2update$DateTime <- as.POSIXlt( foo, format = "%Y-%m-%d %H:%M")
+      rm(foo)
+      colnames(file2update)[3] <- "Temp"
+    } else {
+      date.format <- detect.date.format(file2update$DateTime[1])
+      file2update$DateTime <- as.POSIXlt(file2update$DateTime, origin = "1970-01-01", format = paste(date.format, "%H:%M"))
+    }
+    
+    site <- toupper(site)
+    
+  # Load raw data for site from this year
+  new.loggers <- thefiles[grep(paste0("_", site), thefiles)]
+  new.list <- NULL
+  
+  if(length(new.loggers) > 0){
+    # Read in and prepare data from current year at this site
+    for(j in 1:length(new.loggers)){
+      td <- prepare.file(data.file = new.loggers[j], directory = paste0(data.dir, "/", raw.data.folder), numdailyobs = numdailyobs)
+      new.list <- c(new.list, paste0(site, ".", j + length(old.loggers)))
+      assign(paste0(site, ".", j + length(old.loggers)), td)
+    }
+    if(length(new.loggers) > 0){
+      cat("This year's file(s): ", new.loggers, "\n")
+      file2copyfrom <- choose.file("current.year")
+    } else{
+      print("This site did not have a file this year.")
+      file2copyfrom <- NA
+    }
+    
+    # Stitch together raw data from previous September with raw data from the current year
+    if(!is.na(file2update)[1] & !is.na(file2copyfrom)[1]) dat <- backfill.previous.fall(file2update, file2copyfrom, theyear = (first.year - 1), numdailyobs, date.begin, date.end)
+    
+    # Save
+    write.csv(dat, paste0(data.dir, "/Data_Cleaned_", first.year, "/", data.type, "/", site, ".csv"), row.names = F)
+    cat(paste0("All done with ", site, "!"), "\n")
+      
+    rm(list = new.list); rm(td, dat, file2update, file2copyfrom)
+    } else {
+      cat("Data for that site do not exist for the current year. Check records and/or file names.", "\n")
+    }
+  
+  } else{
+    cat("Data for that site do not exist for the previous year. Check records and/or file names.", "\n")
+  }
+  i <- NULL
+  
+}
+
+# NOTES
+  # 1. After backfilling, will need to re-run creation of single-year matrix 
+  # 2. Next, need to re-merge with allyears matrix
+    # This will require updating the last year's allyears matrix first.
