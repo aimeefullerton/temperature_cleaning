@@ -103,7 +103,8 @@ create.matrix(type = "at", data.dir, cleaned.data.folder, watershed, first.year,
 update.allyears(type = "at", data.dir, watershed, first.year, ylm = c(-10, 35))
 
 # Back-fill data into last year's records for sites that were downloaded before 1 September ####
-thesites <- c() # Enter a list of the sites that need to be updated
+# Enter a list of the sites that need to be updated
+thesites <- c()
 i <- 1
 while(!is.null(i)){
   site <- thesites[i]
@@ -166,7 +167,7 @@ while(!is.null(i)){
   
 }
 
-# NOTES 
+# NOTES
 # 1. After backfilling, will need to re-run creation of single-year matrix 
 # 2. Next, need to re-merge with allyears matrix
 # This will require updating the last year's allyears matrix first.

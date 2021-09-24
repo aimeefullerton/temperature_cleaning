@@ -216,7 +216,8 @@ write.csv(td4, paste0(data.dir1, "/", watershed, ".wt", yy, ".csv"), row.names =
 update.allyears(type = "wt", data.dir, watershed, first.year, ylm = c(-5, 25))
 
 # Back-fill data into last year's records for sites that were downloaded before 1 September ####
-thesites <- c() # Enter a list of the sites that need to be updated
+# Enter a list of the sites that need to be updated
+thesites <- c()
 i <- 1
 while(!is.null(i)){
   site <- thesites[i]
@@ -226,7 +227,16 @@ while(!is.null(i)){
   if(paste0(site, ".csv") %in% dir(paste0(data.dir, "/Data_Cleaned_", first.year, "/", data.type, "/"))) {
     file2update <- read.csv(paste0(data.dir, "/Data_Cleaned_", first.year, "/", data.type, "/", site, ".csv"), header = T, stringsAsFactors = F)
     file2update$Date <- as.Date(file2update$Date)
-    file2update <- file2update[order(file2update$Date, file2update$Time),]
+    
+    # Fix transposed times
+    if(file2update$Time[1]%%1 == 0.5){
+      file2update$NewTime <- file2update$Time
+      file2update$NewTime[file2update$Time%%1 == 0]<- file2update$NewTime[(file2update$Time)%%1 == 0] + 0.5
+      file2update$NewTime[file2update$Time%%1 == 0.5]<- floor(file2update$NewTime)[(file2update$Time)%%1 == 0.5]
+      file2update <- file2update[,c(1,4,3)]; colnames(file2update) <- c("Date", "Time", "Temp")
+      file2update <- file2update[order(file2update$Date, file2update$Time),]
+    }
+    
     # Add "DateTime" column if needed
     if(!"DateTime" %in% colnames(file2update)){
       foo <- paste0(file2update$Date, " ", sprintf("%02d", floor(file2update$Time)), ":00")
@@ -234,6 +244,9 @@ while(!is.null(i)){
       file2update$DateTime <- as.POSIXlt( foo, format = "%Y-%m-%d %H:%M")
       rm(foo)
       colnames(file2update)[3] <- "Temp"
+      file2update <- file2update[, c("DateTime", "Date", "Time", "Temp")]
+      plot(file2update$DateTime[1:100], file2update$Temp[1:100])
+      
     } else {
       date.format <- detect.date.format(file2update$DateTime[1])
       file2update$DateTime <- as.POSIXlt(file2update$DateTime, origin = "1970-01-01", format = paste(date.format, "%H:%M"))
@@ -249,25 +262,15 @@ while(!is.null(i)){
       # Read in and prepare data from current year at this site
       for(j in 1:length(new.loggers)){
         td <- prepare.file(data.file = new.loggers[j], directory = paste0(data.dir, "/", raw.data.folder), numdailyobs = numdailyobs)
-        new.list <- c(new.list, paste0(site, ".", j + length(old.loggers)))
-        assign(paste0(site, ".", j + length(old.loggers)), td)
+        new.list <- c(new.list, paste0(site, ".", j))
+        assign(paste0(site, ".", j), td)
       }
-      if(length(new.loggers) > 0){
-        cat("This year's file(s): ", new.loggers, "\n")
-        file2copyfrom <- choose.file("current.year")
-      } else{
-        print("This site did not have a file this year.")
-        file2copyfrom <- NA
-      }
+      cat("This year's file(s): ", new.loggers, "\n")
+      file2copyfrom <- choose.file("current.year")
       
       # Stitch together raw data from previous September with raw data from the current year
       if(!is.na(file2update)[1] & !is.na(file2copyfrom)[1]) dat <- backfill.previous.fall(file2update, file2copyfrom, theyear = (first.year - 1), numdailyobs, date.begin, date.end)
       
-      # Save
-      write.csv(dat, paste0(data.dir, "/Data_Cleaned_", first.year, "/", data.type, "/", site, ".csv"), row.names = F)
-      cat(paste0("All done with ", site, "!"), "\n")
-      
-      rm(list = new.list); rm(td, dat, file2update, file2copyfrom)
     } else {
       cat("Data for that site do not exist for the current year. Check records and/or file names.", "\n")
     }
@@ -277,9 +280,30 @@ while(!is.null(i)){
   }
   i <- NULL
   
+  if(!exists("dat")) dat <- file2update
+  
+  # Proceed with cleaning the new data added if necessary (unlikely since logger placed less than a month prior)
+  plot.logger(dat)
+  thedirectory <- paste0(data.dir, "/", cleaned.data.folder) #for choosing nearby sites
+  dat <- clean.middle(dat, thedirectory)
+  
+  # Fill time series
+  dat <- fill.time.series(file2update, (first.year - 1), date.begin, date.end, numdailyobs)
+  
+  # Finalize, review, and save
+  plot(dat$Date, dat$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
+  summary(dat[!is.na(dat$Temp),])
+  
+  write.csv(dat, paste0(data.dir, "/Data_Cleaned_", first.year, "/", data.type, "/", site, ".csv"), row.names = F)
+  rm(list = new.list); rm(td, dat, file2update, file2copyfrom)
+  i <- NULL
+  cat(paste0("All done with ", site, "!"), "\n")
+  
 }
 
 # NOTES
 # 1. After backfilling, will need to re-run creation of single-year matrix 
 # 2. Next, need to re-merge with allyears matrix
 # This will require updating the last year's allyears matrix first.
+
+
