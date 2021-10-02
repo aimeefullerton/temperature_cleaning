@@ -35,20 +35,30 @@ for(yy in c(DataYears[1] - 1, DataYears)){
 }
 #nrow(wtdat[wtdat$WaterYear == thisyear,])
 
-wtdat$Time2 <- time.stamp(wtdat$Time)
+wtdat$Time2 <- time.stamp(wtdat$Time, seconds = F)
 range(wtdat$Date[!is.na(wtdat[,3])])
 
-# Output individual site files
+wtdat$Date2 <- format(wtdat$Date, "%m/%d/%Y")
+wtdat$DateTime <- paste0(wtdat$Date2, " ", wtdat$Time2)
+
+# Output individual site files in King County preferred format and for specified period
 for(site in sites){
-  idx <- which(colnames(wtdat) == site)
-  td <- wtdat[,c("WaterYear", "Date", "Time", "Time2", site)]
-  td <- td[order(td$Date, td$Time),]
-  td <- td[,-3]
-  colnames(td)[3] <- "Time"
-  colnames(td)[4] <- "Temp_C"
+  td <- wtdat[wtdat$Date >= as.Date("2019-09-01"),c("DateTime", site)]
+  colnames(td) <- c("Timestamp (GMT - 07:00)", "Temp_C")
+  td$Temp_C <- round(td$Temp_C, 1)
   write.csv(td, paste0(data.dir, "/Data2Share/NOAA_", site,".csv"), row.names = F, na = "")
 }  
 
+# # Output individual site files ALTERNATE FORMAT
+# for(site in sites){
+#   idx <- which(colnames(wtdat) == site)
+#   td <- wtdat[,c("WaterYear", "Date", "Time", "Time2", site)]
+#   td <- td[order(td$Date, td$Time),]
+#   td <- td[,-3]
+#   colnames(td)[3] <- "Time"
+#   colnames(td)[4] <- "Temp_C"
+#   write.csv(td, paste0(data.dir, "/Data2Share/NOAA_", site,".csv"), row.names = F, na = "")
+# }  
 summary(td[td$WaterYear == thisyear,]) #to examine
 
 # end of script
