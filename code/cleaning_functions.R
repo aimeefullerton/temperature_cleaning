@@ -803,13 +803,14 @@ get_value <- function(mykey, mylookupvector)
 }
 
 # Add time stamp column
-time.stamp <- function(x)
+time.stamp <- function(x, seconds = F)
 {
   thehour <- floor(x)
   theminutes <- substr(x%%2, 3, 3)
   theminutes[theminutes == ""] <- "00"
   theminutes[theminutes == "5"] <- "30"
-  answer <- paste0(thehour, ":", theminutes, ":00 PDT")
+  if(seconds == T) theseconds <- ":00 PDT" else theseconds <- ""
+  answer <- paste0(thehour, ":", theminutes, theseconds)
   return(answer)
 }
 
