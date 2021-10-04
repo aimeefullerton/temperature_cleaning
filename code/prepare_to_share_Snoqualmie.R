@@ -46,10 +46,11 @@ for(site in sites){
   td <- wtdat[wtdat$Date >= as.Date("2019-09-01"),c("DateTime", site)]
   colnames(td) <- c("Timestamp (GMT - 07:00)", "Temp_C")
   td$Temp_C <- round(td$Temp_C, 1)
+  td <- td[!is.na(td$Temp_C),]
   write.csv(td, paste0(data.dir, "/Data2Share/NOAA_", site,".csv"), row.names = F, na = "")
 }  
 
-# # Output individual site files ALTERNATE FORMAT
+# # Output individual site files OLD FORMAT
 # for(site in sites){
 #   idx <- which(colnames(wtdat) == site)
 #   td <- wtdat[,c("WaterYear", "Date", "Time", "Time2", site)]
@@ -59,7 +60,7 @@ for(site in sites){
 #   colnames(td)[4] <- "Temp_C"
 #   write.csv(td, paste0(data.dir, "/Data2Share/NOAA_", site,".csv"), row.names = F, na = "")
 # }  
-summary(td[td$WaterYear == thisyear,]) #to examine
+# summary(td[td$WaterYear == thisyear,]) #to examine
 
 # end of script
 
