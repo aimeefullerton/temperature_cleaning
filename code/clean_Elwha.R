@@ -1,5 +1,5 @@
 # Clean temperature data files to remove erroneous readings (e.g. from air, sediment, or ice)
-# Aimee H Fullerton, 9 December 2020
+# Aimee H Fullerton, 7 Jan 2022 (9 December 2020)
 
 # Load functions
 numdailyobs <- 24
@@ -7,15 +7,22 @@ source("code/cleaning_functions.R")
 
 # Directories
 watershed <- "elwha"
-first.year <- 2019
-date.begin <- "-08-01"
-date.end <- "-09-30"
+first.year <- 2020
+date.begin <- "-10-01"
+date.end <- "-11-30"
 data.dir <- "/Users/aimee_fullerton/GitHub/Elwha_ST/data"
-data.dir2 <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Elwha.ST/data_from_George"
+#data.dir2 <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Elwha.ST/data_from_George"
 raw.data.folder <- paste0(first.year + 1, "/data.raw")
 old.data.folder <- paste0(first.year, "/data.raw")
 cleaned.data.folder <- paste0(first.year + 1, "/data.cleaned")
-cleaned.data.folder2 <- "found_data_cleaned"
+#cleaned.data.folder2 <- "found_data_cleaned"
+if(!dir.exists(paste0(data.dir, "/", cleaned.data.folder))){
+  dir.create(paste0(data.dir, "/Data_Cleaned_", (first.year + 1)), showWarnings = F)
+  dir.create(paste0(data.dir, "/", cleaned.data.folder), showWarnings = F)
+}
+oldfiles <- dir(paste0(data.dir, "/", old.data.folder))
+thefiles <- dir(paste0(data.dir, "/", raw.data.folder))
+#oldfiles <- toupper(oldfiles); thefiles <- toupper(thefiles)
 
 sites.attr <- read.csv(paste0(data.dir, "/elwha.sites.attributed.csv"), header = T)
 xx <- sites.attr$Site.Name; names(xx) <- sites.attr$SiteCode
@@ -23,10 +30,8 @@ xx <- sites.attr$Site.Name; names(xx) <- sites.attr$SiteCode
 
 
 # Clean the data ####
-(thefiles <- dir(paste0(data.dir, "/", raw.data.folder)))
-(oldfiles <- dir(paste0(data.dir, "/", old.data.folder)))
-
-i <- 1 # Look at 'thefiles' and pick sites one by one manually
+thefiles
+i <- 15 # Look at 'thefiles' and pick sites one by one manually
 
 while(!is.null(i)){
   data.file <- thefiles[i]
@@ -72,6 +77,10 @@ while(!is.null(i)){
     newfile2keep <- NA
   }
   
+  # Fix time stamp if minutes is not on the hour, by truncating 
+  if(!is.na(newfile2keep)[1] & numdailyobs == 24) newfile2keep$DateTime <- time.truncate(newfile2keep$DateTime)
+  if(!is.na(oldfile2keep)[1] & numdailyobs == 24) oldfile2keep$DateTime <- time.truncate(oldfile2keep$DateTime)
+  
   # Stitch together raw data from previous September with raw data from the current year
   if(!is.na(newfile2keep)[1] & !is.na(oldfile2keep)[1]) dat <- get.complete.year(oldfile2keep, newfile2keep, first.year, numdailyobs, date.begin, date.end)
   # or clip the old or new year to boundary dates if only one year has data
@@ -79,39 +88,55 @@ while(!is.null(i)){
   if(is.na(oldfile2keep)[1] & !is.na(newfile2keep)[1]) dat <- clip.single.file(newfile2keep, first.year, numdailyobs, date.begin, date.end)
   
   # If there are multiple that need to be strung together:
-  if(length(new.list) > 1){
+  ans <- readline("Are there multiple files for the current year that need to be strung together? (Choose y or n) ")
+  if(ans == "y" & length(new.list) > 1){
     oldfile2keep <- dat[!is.na(dat$Temp),]
+    cat("This year's file(s): ", new.loggers, "\n")
     newfile2keep <- choose.file("current.year")
+    # Fix time stamp if minutes is not on the hour, by truncating 
+    if(!is.na(newfile2keep)[1] & numdailyobs == 24) newfile2keep$DateTime <- time.truncate(newfile2keep$DateTime)
+    
     # Stitch together data from above with data from the secondary logger in the current year
     if(!is.na(newfile2keep)[1]) dat <- get.complete.year(oldfile2keep, newfile2keep, first.year, numdailyobs, date.begin, date.end)
     if(is.na(newfile2keep)[1]) dat <- clip.single.file(oldfile2keep, first.year, numdailyobs, date.begin, date.end)
   }
   
   # Check for flags
-  check.hobo(dat) 
-  plot.hobo(dat)
-  
+  check.logger(dat) 
+  plot.logger(dat)
+
   # Proceed with cleaning the data
   # note: deployment and recovery dates should already be dealt with from above stitching steps
   dat <- clean.deployment(dat) #clip off data before deployment date
-  plot.hobo(dat)
+  plot.logger(dat)
   dat <- clean.recovery(dat) #clip off data after recovery date
-  plot.hobo(dat)
+  plot.logger(dat)
   thedirectory <- paste0(data.dir, "/", cleaned.data.folder) #for choosing nearby sites
   dat <- clean.middle(dat, thedirectory)
   
   # Finalize, review, and save
-  plot(dat$Date, dat$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
+  plot(dat$DateTime, dat$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
   summary(dat[!is.na(dat$Temp),])
   
-  write.csv(dat, paste0(data.dir, "/", cleaned.data.folder, "/", data.file), row.names = F)
+  # Ensure the whole time series is filled out (even if some temperatures are NAs)
+  dat <- fill.time.series(dat, first.year, date.begin, date.end, numdailyobs)
+  
+  write.csv(dat, paste0(data.dir, "/", cleaned.data.folder, "/", site, ".csv"), row.names = F)
+  rm(list = old.list); rm(list = new.list); rm(td, dat, newfile2keep, oldfile2keep)
+  i <- NULL
+  cat(paste0("All done with ", site, "!"), "\n")
 }
 
-
-
-
-
-
+(thefiles <- dir(paste0(data.dir, "/", cleaned.data.folder)))
+par(mfrow = c(4,4))
+for(i in 1:length(thefiles)){
+  site.name <- gsub("_.*","", thefiles[i])
+  td <- read.csv(paste0(data.dir, "/", cleaned.data.folder, "/", thefiles[i]), header = T, stringsAsFactors = F)
+  td$DateTime <- as.POSIXlt(td$DateTime, format = "%Y-%m-%d %H:%M"); td$Date <- as.Date(td$Date)
+  td <- td[td$DateTime > min(td$DateTime[!is.na(td$Temp)]),]
+  td <- td[td$DateTime < max(td$DateTime[!is.na(td$Temp)]),]
+  plot(td$DateTime, td$Temp, type = 'l', main = site.name, xlab = "", ylab = "")
+}
 
 # Organize current year's data as matrix with Date and Site columns; NAs where no data ####
 # helpful for use in SSN models
@@ -148,13 +173,15 @@ for(i in 1:length(thefiles)){
 }
 if(first.year == 2018) colnames(new.df) <- c("DateTime", "Date", "Time", "BO1", "MS34", "MS25", "MS21", "FP28", "FP9", "IC2", "IC9", "LL1", "LR11", "LO1", "FP11", "FP10")
 if(first.year == 2019) colnames(new.df) <- c("DateTime", "Date", "Time", "MS25", "MS21", "MS39", "GR1", "HU1", "FP9", "IC2", "LR11", "FP11", "FP4", "MS11")
+if(first.year == 2020) colnames(new.df) <- c("DateTime", "Date", "Time", "EUTRBC", "EUMSBC", "EMMSLA2", "EMMSAL", "ELMSFW", "EMTRGC", "ELMSHR", "EMTRIC1", "EMTRIC19", "EMTRLLR", "EMTRMC", "ELSC3", "ELSC8", "EMSC15")
 write.csv(new.df, paste0(data.dir, "/", (first.year + 1), "/", watershed, ".wt.", (first.year + 1), ".csv"), row.names = F)
 
 # plot in individual panels to check
 png(paste0(data.dir, "/", (first.year + 1), "/", watershed, ".wt.", (first.year + 1), ".png"), width = 16, height = 10, units = "in", res = 300)
-par(mfrow = c(6,8), las = 1, cex = 0.5)
+par(mfrow = c(4,4), las = 1, cex = 0.5)
 for(i in 4:(ncol(new.df))){
-  plot(new.df$Date, new.df[,i], type = 'l', ylim = c(-5, 25), main = colnames(new.df)[i], xlab = "", ylab = "")
+  plot(new.df$DateTime, new.df[,i], type = 'l', ylim = c(-5, 25), main = colnames(new.df)[i], xlab = "", ylab = "", xaxt = 'n', las = 1)
+  axis.POSIXct(1, at = seq(new.df$DateTime[1], new.df$DateTime[length(new.df$DateTime)-1], by = "month"), new.df$DateTime, format = "%m-%y")
 }
 dev.off()  
 
