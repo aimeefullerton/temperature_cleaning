@@ -814,6 +814,19 @@ time.stamp <- function(x, seconds = F)
   return(answer)
 }
 
+# Truncate times not on the hour
+time.truncate <- function(dt)
+{
+  d <- lubridate::day(dt)
+  m <- lubridate::month(dt)
+  y <- lubridate::year(dt)
+  h <- lubridate::hour(dt)
+  i <- rep(0, length(dt)) #lubridate::minute(dt)
+  s <- rep(0, length(dt)) #lubridate::second(dt)
+  
+  return(as.POSIXlt(paste0(y, "-", m, "-", d, " ", h, ":", i, ":", s)))
+}
+
 # Ensure the timeseries has a complete set of dates/times even if temperatures are NA
 fill.time.series <- function(time.series, first.year, date.begin, date.end, numdailyobs)
 {
