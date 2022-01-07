@@ -161,7 +161,7 @@ while(!is.null(i)){
   dat <- clean.middle(dat, thedirectory)
   
   # Finalize, review, and save
-  plot(dat$Date, dat$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
+  plot(dat$DateTime, dat$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
   summary(dat[!is.na(dat$Temp),])
   
   # Ensure the whole time series is filled out (even if some temperatures are NAs)

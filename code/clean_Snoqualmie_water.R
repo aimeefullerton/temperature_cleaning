@@ -98,7 +98,7 @@ thedirectory <- paste0(data.dir, "/", cleaned.data.folder) #for choosing nearby 
 dat <- clean.middle(dat, thedirectory)
 
 # Finalize, review, and save
-plot(dat$Date, dat$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
+plot(dat$DateTime, dat$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
 summary(dat[!is.na(dat$Temp),])
 
 write.csv(dat, paste0(data.dir, "/", cleaned.data.folder, "/", site, ".csv"), row.names = F)
