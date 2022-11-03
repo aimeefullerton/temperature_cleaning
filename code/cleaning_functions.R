@@ -25,43 +25,41 @@ prepare.file <- function(data.file, directory, numdailyobs = 24)
   
   worked <- NULL
   worked <- tryCatch(
-    read.csv(paste0(directory, "/", data.file), skip = 1, header = T, stringsAsFactors = F)[,2:3], 
-    error = function(error_condition) {
-      return(NULL)}
+    read.csv(paste0(directory, "/", data.file)), 
+    error = function(error_condition) {return(NULL)}
   )
+  if(length(worked) > 0 & length(setdiff(colnames(worked), c("DateTime", "Date", "Time", "Temp"))) == 0){
+    type <- "preprocessed"
+  } else { 
+    type <- "raw"
+  }
   
   #raw Onset files
-  if(length(worked) > 0){
-    if(nchar(worked[1,1]) > 8){
+  if(type == "raw"){
     td <- read.csv(paste0(directory, "/", data.file), skip = 1, header = T, stringsAsFactors = F)[,2:3]
     colnames(td) = c("DateTime","Temp")
     date.format <- detect.date.format(td$DateTime[1])
-    td$Date <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = date.format)
+      if(nchar(td[1,1]) > 14) date.format = paste(date.format, "%I:%M:%S %p")
+      if(nchar(td[1,1]) <= 14) date.format = paste(date.format, "%H:%M")
+    td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = date.format)
     td$Date <- as.Date(td$Date)
-    if(nchar(worked[1,1]) > 14) td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = paste(date.format, "%I:%M:%S %p"))
-    if(nchar(worked[1,1]) <= 14) td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = paste(date.format, "%H:%M"))
-    }
-  }
-  #pre-processed files
-  if(length(worked) == 0 | (length(worked) > 0 & nchar(worked[1,1]) <= 8)) {
-    td <- read.csv(paste0(directory, "/", data.file), skip = 1, header = F, stringsAsFactors = F) 
-    colnames(td) = c("Date", "Time","Temp")
-    date.format <- detect.date.format(td$DateTime[1])
-    td$Date <- as.POSIXlt(td$Date, origin = "1970-01-01", format = date.format)
-    td$Date <- as.Date(td$Date)
-    td$DateTime <- paste(td$Date, td$Time)
-    td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = "%Y-%m-%d %H:%M")
-    td <- td[,c("DateTime", "Temp", "Date")]
+    td$Time <- td$DateTime$hour
+    #if(numdailyobs == 48){
+    #  evens <- seq(2, length(td$Time),2)
+    #  td$Time[evens] <- td$Time[evens] + 0.5
+    #}
   }
   
-  td$Time <- td$DateTime$hour
-  if(numdailyobs == 48){
-    evens <- seq(2, length(td$Time),2)
-    td$Time[evens] <- td$Time[evens] + 0.5
+  #pre-processed files
+  if(type == "preprocessed") {
+    td <- read.csv(paste0(directory, "/", data.file), header = T, stringsAsFactors = F) 
+    td$Date <- as.Date(td$Date)
+    td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = "%Y-%m-%d %H:%M")
   }
+  
   td <- td[!is.na(td$DateTime),]
   td <- td[!is.na(td$Temp),] # remove any records of bad battery etc. important step!
-  td <- td[order(td$Date, td$Time),]
+  td <- td[order(td$DateTime),]
   td <- td[, c("DateTime", "Date", "Time", "Temp")]
   
   return(td)
@@ -350,6 +348,7 @@ get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyob
   if(first.obs == 1 & !ddate %in% newfile2keep$Date){
     plot(newfile2keep$DateTime[obs.week2], newfile2keep$Temp[obs.week2], xlab = "Observation", ylab = "Temperature (C)", 
          main = paste("Pick the FIRST obs from the NEW timeseries near transition date ", as.character(ddate)), ylim = c(0,35), col = 2)
+    points(newfile2keep$DateTime[obs.week2], newfile2keep$Temp[obs.week2], col = 2)
     obs <- identify(newfile2keep$DateTime[obs.week2], newfile2keep$Temp[obs.week2], n = 1)
     points(newfile2keep$DateTime[obs], newfile2keep$Temp[obs], col = 2, pch = 19, cex = 1.2)
     
@@ -388,7 +387,7 @@ get.complete.year <- function(oldfile2keep, newfile2keep, first.year, numdailyob
   
   
   # Plot and print diagnostics
-  plot(file2keep$Date, file2keep$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
+  plot(file2keep$DateTime, file2keep$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
   abline(v = as.Date(paste0(first.year, date.begin)), lty = 2)
   abline(v = as.Date(paste0(first.year + 1, date.end)), lty = 2)
   
@@ -522,7 +521,7 @@ backfill.previous.fall <- function(file2update, file2copyfrom, theyear, numdaily
   
   
   # Plot and print diagnostics
-  plot(file2keep$Date, file2keep$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
+  plot(file2keep$DateTime, file2keep$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
   abline(v = as.Date(paste0(theyear, date.begin)), lty = 2)
   abline(v = as.Date(paste0(first.year, date.end)), lty = 2)
   
@@ -883,6 +882,7 @@ row.names(new.df) <- NULL
 for(i in 1:length(thefiles)){
   site.name <- gsub(".csv","",thefiles[i])
   td <- read.csv(paste0(data.dir, "/", cleaned.data.folder, "/", thefiles[i]), header = T, stringsAsFactors = F)
+  td$DateTime <- as.POSIXlt( td$DateTime, format = "%Y-%m-%d %H:%M")
   # Add "DateTime" column if needed
   if(!"DateTime" %in% colnames(td)){
     foo <- paste0(td$Date, " ", sprintf("%02d", floor(td$Time)), ":00")
@@ -896,7 +896,7 @@ for(i in 1:length(thefiles)){
 }
 
 # sort
-new.df <- new.df[order(new.df$Date, new.df$Time),]
+new.df <- new.df[order(new.df$DateTime),]
 
 # save
 write.csv(new.df, paste0(data.dir, "/Data_Cleaned_", (first.year + 1), "/", watershed, ".", type, ".", (first.year + 1), ".csv"), row.names = F)
@@ -905,9 +905,7 @@ write.csv(new.df, paste0(data.dir, "/Data_Cleaned_", (first.year + 1), "/", wate
 png(paste0(data.dir, "/Data_Cleaned_", (first.year + 1), "/", watershed, ".", type, ".", (first.year + 1), ".png"), width = 16, height = 10, units = "in", res = 300)
 par(mfrow = c(6,8), las = 1, cex = 0.5)
 for(i in 4:(ncol(new.df))){
-  plot(new.df$Date, new.df[,i], type = 'l', ylim = ylm, main = colnames(new.df)[i], xlab = "", ylab = "")
-  abline(v = as.Date(paste0(first.year, date.begin)), lty = 2)
-  abline(v = as.Date(paste0(first.year + 1, date.end)), lty = 2)
+  plot(new.df$DateTime, new.df[,i], type = 'l', ylim = ylm, main = colnames(new.df)[i], xlab = "", ylab = "")
 }
 dev.off()  
 
@@ -928,7 +926,7 @@ colnames(dat.all) <- c("Date", "Time", sites)
 dat.yy <- read.csv(paste0(data.dir, "/Data_Cleaned_", yy, "/", watershed, ".", type, ".", yy, ".csv"), header = T)
 date.format <- detect.date.format(dat.yy$Date[1])
 dat.yy$Date <- as.Date(dat.yy$Date, format = date.format)
-for(i in 3:ncol(dat.yy)){
+for(i in 4:ncol(dat.yy)){
   cn <- colnames(dat.yy)[i]
   colnames(dat.yy)[i] <- gsub("_.*","", cn)
 }
