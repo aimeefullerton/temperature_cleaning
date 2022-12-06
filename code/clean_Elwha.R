@@ -7,11 +7,11 @@ source("code/cleaning_functions.R")
 
 # Directories
 watershed <- "elwha"
-first.year <- 2020
+first.year <- 2021
 date.begin <- "-10-01"
 date.end <- "-11-30"
-data.dir <- "/Users/aimee_fullerton/GitHub/Elwha_ST/data"
-#data.dir2 <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Elwha.ST/data_from_George"
+data.dir <- "/Users/aimeefullerton/GitHub/Elwha_ST/data"
+#data.dir2 <- "/Users/aimeefullerton/OneDrive/Work/Research/StreamTemperature/Elwha.ST/data_from_George"
 raw.data.folder <- paste0(first.year + 1, "/data.raw")
 old.data.folder <- paste0(first.year, "/data.raw")
 cleaned.data.folder <- paste0(first.year + 1, "/data.cleaned")
@@ -31,7 +31,7 @@ xx <- sites.attr$Site.Name; names(xx) <- sites.attr$SiteCode
 
 # Clean the data ####
 thefiles
-i <- 15 # Look at 'thefiles' and pick sites one by one manually
+i <- 1 # Look at 'thefiles' and pick sites one by one manually
 
 while(!is.null(i)){
   data.file <- thefiles[i]
