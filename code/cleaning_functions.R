@@ -65,6 +65,24 @@ prepare.file <- function(data.file, directory, numdailyobs = 24)
   return(td)
 }
 
+# Read in and prepare file saved as MS Excel (ie MX bluetooth loggers)
+prepare.xls.file <- function(data.file, directory, numdailyobs = 24)
+{
+  
+  td <- read_xlsx(paste0(data.dir, "/", raw.data.folder, "/", data.file))[,c(2:3)]
+  colnames(td) = c("DateTime","Temp")
+  date.format <- detect.date.format(td$DateTime[1])
+  td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = date.format, tz = "PST")
+  td$Date <- as.Date(td$DateTime)
+  td$Time <- td$DateTime$hour
+  td <- td[!is.na(td$DateTime),]
+  td <- td[!is.na(td$Temp),] # remove any records of bad battery etc. important step!
+  td <- td[order(td$DateTime),]
+  td <- td[, c("DateTime", "Date", "Time", "Temp")]
+  
+  return(td)
+}
+
 # Plot time series
 plot.logger <- function(logger, type = "l")
 {
@@ -830,6 +848,8 @@ time.truncate <- function(dt)
 fill.time.series <- function(time.series, first.year, date.begin, date.end, numdailyobs)
 {
 
+time.series <- as.data.frame(time.series)
+
 # Create empty dataframe with all dates/times
 dates <- seq(from = as.Date(paste0(first.year, date.begin)), to = as.Date(paste0(first.year + 1, date.end)), by = 1)
 file2keep <- data.frame(matrix(NA, nrow = length(dates) * numdailyobs, ncol = 3))
@@ -845,6 +865,7 @@ foo <- paste0(file2keep$Date, " ", sprintf("%02d", floor(file2keep$Time)), ":00"
 if(numdailyobs == 48) foo[seq(2, length(foo), 2)] <- gsub(":00", ":30", foo[seq(2, length(foo), 2)])
 file2keep$DateTime <- as.POSIXlt( foo, format = "%Y-%m-%d %H:%M")
 row.names(file2keep) <- NULL
+file2keep <- file2keep[!is.na(file2keep$DateTime),] #removes weird March date that is NA in this field but not really
 
 
 # Merge
