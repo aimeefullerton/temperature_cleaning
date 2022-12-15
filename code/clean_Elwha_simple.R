@@ -74,3 +74,15 @@ for(f in 1:length(thefiles)){
   plot(dat$DateTime, dat$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date", main = gsub(".csv","",thefiles[f]))
 }
 dev.off()
+
+# Get into single file
+final.dat <- NA
+for(f in 1:length(thefiles)){
+  dat <- read.csv(paste0(data.dir, "/", cleaned.data.folder, "/", thefiles[f]))
+  date.format <- detect.date.format(dat$DateTime[1])
+  dat$DateTime <- as.POSIXlt(dat$DateTime, format = date.format)
+  dat$Site <- gsub(".csv","",thefiles[f])
+  final.dat <- rbind(final.dat, dat)
+}
+if(any(is.na(final.dat$DateTime))) final.dat <- final.dat[!is.na(final.dat$DateTime),]
+write.csv(final.dat, paste0(data.dir, "/", (first.year + 1), "/st.data.csv"))
