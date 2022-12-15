@@ -1,18 +1,25 @@
 # Clean temperature data files to remove erroneous readings (e.g. from air, sediment, or ice)
-# Aimee H Fullerton, 24 September 2021
+# Aimee H Fullerton, 14 December 2022
+
+
+# NOTE: If loggers were launched at random times and not on the hour, this may come in handy:
+#dat$DateTime <- lubridate::round_date(dat$DateTime, unit = "hour", "%H") This date issue is really problematic!
 
 # SETUP ####
 # Load functions
-numdailyobs <- 48
+numdailyobs <- 24
 source("code/cleaning_functions.R")
 
 # Directories
 watershed <- "snoqualmie"
-first.year <- 2020
 date.begin <- "-09-01"
 date.end <- "-08-31"
-data.dir <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Hobonet/Data"
+data.dir <- "/Users/aimeefullerton/OneDrive/Work/Research/ST_Snoqualmie/Data"
 data.type <- "water"
+
+# CHOOSE An OPTION: 
+# 1. Setup for back-filling the beginning of the current year's time series back to Sep 1 if loggers were downloaded after Sep started
+first.year <- 2021
 raw.data.folder <- paste0("Data_Raw_Sep", (first.year + 1), "/", data.type)
 old.data.folder <- paste0("Data_Raw_Sep", first.year, "/", data.type)
 cleaned.data.folder <- paste0("Data_Cleaned_", (first.year + 1), "/", data.type)
@@ -23,6 +30,23 @@ if(!dir.exists(paste0(data.dir, "/", cleaned.data.folder))){
 oldfiles <- dir(paste0(data.dir, "/", old.data.folder))
 thefiles <- dir(paste0(data.dir, "/", raw.data.folder))
 oldfiles <- toupper(oldfiles); thefiles <- toupper(thefiles)
+
+# 2. Setup for back-filling the end of the previous year's time series through Aug 31 if loggers were downloaded before the end of Aug
+# First, check if last year needs any backfilling:
+first.year <- 2021
+last_year_data <- read.csv(paste0(data.dir, "/Data_Cleaned_", first.year, "/", watershed, ".wt.", first.year, ".csv"))
+range(last_year_data$DateTime)
+tail(last_year_data)
+#If so, proceed:
+first.year <- 2020
+raw.data.folder <- paste0("Data_Raw_Sep", (first.year + 2), "/", data.type)
+old.data.folder <- paste0("Data_Cleaned_", (first.year + 1), "/", data.type)
+cleaned.data.folder <- paste0("Data_Cleaned_", (first.year + 1), "/", data.type)
+oldfiles <- dir(paste0(data.dir, "/", old.data.folder))
+thefiles <- dir(paste0(data.dir, "/", raw.data.folder))
+oldfiles <- paste0("AIR_", toupper(oldfiles)); thefiles <- toupper(thefiles)
+
+
 
 # Clean the data, processing sites individually ####
 thefiles # Look at 'thefiles' and pick sites one manually
@@ -114,92 +138,6 @@ create.matrix(type = "wt", data.dir, cleaned.data.folder, watershed, first.year,
 update.allyears(type = "wt", data.dir, watershed, first.year, ylm = c(-5, 30))
 
 
-# Back-fill data into last year's records for sites that were downloaded before 1 September ####
-  # Enter a list of the sites that need to be updated
-thesites <- c("C1", "C2", "MF1", "MF2", "MF3", "D1", "F1", "MS10", "T1", "R5a", "R5b", "R5c", "SF1", "SF2", "SF3", "K1", "L3", "R3", "R1", "MF5", "MF6", "MS4", "MS5", "MS6", "MS8", "MS9", "Y1", "NF4")
-thesites <- c("X1", "S1", "R4", "R2", "NF2", "NF1", "M1", "L2", "L1", "E1", "B1")
-i <- 1
-while(!is.null(i)){
-  site <- thesites[i]
-  cat(site, "\n")
-  
-  # Load cleaned data for site from last year
-  if(paste0(site, ".csv") %in% dir(paste0(data.dir, "/Data_Cleaned_", first.year, "/", data.type, "/"))) {
-    file2update <- read.csv(paste0(data.dir, "/Data_Cleaned_", first.year, "/", data.type, "/", site, ".csv"), header = T, stringsAsFactors = F)
-    file2update$Date <- as.Date(file2update$Date)
-
-    # Fix transposed times
-    if(file2update$Time[1]%%1 == 0.5){
-      file2update$NewTime <- file2update$Time
-      file2update$NewTime[file2update$Time%%1 == 0]<- file2update$NewTime[(file2update$Time)%%1 == 0] + 0.5
-      file2update$NewTime[file2update$Time%%1 == 0.5]<- floor(file2update$NewTime)[(file2update$Time)%%1 == 0.5]
-      file2update <- file2update[,c(1,4,3)]; colnames(file2update) <- c("Date", "Time", "Temp")
-      file2update <- file2update[order(file2update$Date, file2update$Time),]
-    }
-    
-    # Add "DateTime" column if needed
-    if(!"DateTime" %in% colnames(file2update)){
-      foo <- paste0(file2update$Date, " ", sprintf("%02d", floor(file2update$Time)), ":00")
-      if(numdailyobs == 48) foo[seq(2, length(foo), 2)] <- gsub(":00", ":30", foo[seq(2, length(foo), 2)])
-      file2update$DateTime <- as.POSIXlt( foo, format = "%Y-%m-%d %H:%M")
-      rm(foo)
-      colnames(file2update)[3] <- "Temp"
-      file2update <- file2update[, c("DateTime", "Date", "Time", "Temp")]
-      plot(file2update$DateTime[1:100], file2update$Temp[1:100])
-      
-    } else {
-      date.format <- detect.date.format(file2update$DateTime[1])
-      file2update$DateTime <- as.POSIXlt(file2update$DateTime, origin = "1970-01-01", format = paste(date.format, "%H:%M"))
-    }
-    
-    site <- toupper(site)
-    
-    # Load raw data for site from this year
-    new.loggers <- thefiles[grep(site, thefiles)]
-    new.list <- NULL
-    
-    if(length(new.loggers) > 0){
-      # Read in and prepare data from current year at this site
-      for(j in 1:length(new.loggers)){
-        td <- prepare.file(data.file = new.loggers[j], directory = paste0(data.dir, "/", raw.data.folder), numdailyobs = numdailyobs)
-        new.list <- c(new.list, paste0(site, ".", j))
-        assign(paste0(site, ".", j), td)
-      }
-        cat("This year's file(s): ", new.loggers, "\n")
-        file2copyfrom <- choose.file("current.year")
-        
-      # Stitch together raw data from previous September with raw data from the current year
-      if(!is.na(file2update)[1] & !is.na(file2copyfrom)[1]) dat <- backfill.previous.fall(file2update, file2copyfrom, theyear = (first.year - 1), numdailyobs, date.begin, date.end)
-      
-    } else {
-      cat("Data for that site do not exist for the current year. Check records and/or file names.", "\n")
-    }
-    
-  } else{
-    cat("Data for that site do not exist for the previous year. Check records and/or file names.", "\n")
-  }
-  i <- NULL
-  
-  if(!exists("dat")) dat <- file2update
-  
-  # Proceed with cleaning the new data added if necessary (unlikely since logger placed less than a month prior)
-  plot.logger(dat)
-  thedirectory <- paste0(data.dir, "/", cleaned.data.folder) #for choosing nearby sites
-  dat <- clean.middle(dat, thedirectory)
-  
-  # Fill time series
-  dat <- fill.time.series(file2update, (first.year - 1), date.begin, date.end, numdailyobs)
-  
-  # Finalize, review, and save
-  plot(dat$Date, dat$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
-  summary(dat[!is.na(dat$Temp),])
-  
-  write.csv(dat, paste0(data.dir, "/Data_Cleaned_", first.year, "/", data.type, "/", site, ".csv"), row.names = F)
-  rm(list = new.list); rm(td, dat, file2update, file2copyfrom)
-  i <- NULL
-  cat(paste0("All done with ", site, "!"), "\n")
-  
-}
 
 # NOTES
 # 1. After backfilling, will need to re-run creation of single-year matrix 
