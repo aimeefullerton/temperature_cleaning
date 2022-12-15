@@ -1,13 +1,13 @@
 # Get Snoqualmie watershed water temperature data ready to share on King County's website
-# Aimee H Fullerton, 23 September 2021
+# Aimee H Fullerton, 14 December 2022
 
-data.dir <- "/Users/aimee_fullerton/OneDrive/Work/Research/StreamTemperature/Hobonet/Data"
-thisyear <- 2021
+data.dir <- "/Users/aimeefullerton/OneDrive/Work/Research/ST_Snoqualmie/Data"
+thisyear <- 2022
 DataYears<- 2012:thisyear
 LeapYears<- seq(2008, 2040, 4)
 nYears<- length(DataYears)
 nLeapYrs<- length(intersect(LeapYears, DataYears))
-numdailyobs <- 48
+numdailyobs <- 24
 
 source("code/cleaning_functions.R")
 
@@ -43,7 +43,7 @@ wtdat$DateTime <- paste0(wtdat$Date2, " ", wtdat$Time2)
 
 # Output individual site files in King County preferred format and for specified period
 for(site in sites){
-  td <- wtdat[wtdat$Date >= as.Date("2019-09-01"),c("DateTime", site)]
+  td <- wtdat[wtdat$Date >= as.Date("2021-09-01"),c("DateTime", site)]
   colnames(td) <- c("Timestamp (GMT - 07:00)", "Temp_C")
   td$Temp_C <- round(td$Temp_C, 1)
   td <- td[!is.na(td$Temp_C),]
