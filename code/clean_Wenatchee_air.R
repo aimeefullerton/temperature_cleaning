@@ -1,6 +1,9 @@
 # Stitch together complete air temperature records
 # Aimee H Fullerton, 1 November 2022
 
+# NOTE: If loggers were launched at random times and not on the hour, this may come in handy:
+#dat$DateTime <- lubridate::round_date(dat$DateTime, unit = "hour", "%H") This date issue is really problematic!
+
 # SETUP ####
 # Load functions
 numdailyobs <- 24
@@ -16,7 +19,7 @@ data.dir <- paste0(data.dir1, "/", data.dir2)
 data.type <- "air"
 
 # CHOOSE An OPTION: 
-# 1. Setup for back-filling the beginning of the time series back to Sep 1 if loggers were downloaded after Sep started
+# 1. Setup for back-filling the beginning of the current year's time series back to Sep 1 if loggers were downloaded after Sep started
 first.year <- 2021
 raw.data.folder <- paste0("Data_Raw_Sep", (first.year + 1), "/", data.type)
 old.data.folder <- paste0("Data_Raw_Sep", first.year, "/", data.type)
@@ -29,7 +32,13 @@ oldfiles <- dir(paste0(data.dir, "/", old.data.folder))
 thefiles <- dir(paste0(data.dir, "/", raw.data.folder))
 oldfiles <- toupper(oldfiles); thefiles <- toupper(thefiles)
 
-# 2. Setup for back-filling the end of the time series through Aug 31 if loggers were downloaded before the end of Aug
+# 2. Setup for back-filling the end of the previous year's time series through Aug 31 if loggers were downloaded before the end of Aug
+# First, check if last year needs any backfilling:
+first.year <- 2021
+last_year_data <- read.csv(paste0(data.dir, "/Data_Cleaned_", first.year, "/", watershed, ".at.", first.year, ".csv"))
+range(last_year_data$DateTime)
+tail(last_year_data)
+#If so, proceed:
 first.year <- 2020
 raw.data.folder <- paste0("Data_Raw_Sep", (first.year + 2), "/", data.type)
 old.data.folder <- paste0("Data_Cleaned_", (first.year + 1), "/", data.type)
@@ -44,7 +53,7 @@ thefiles # Look at 'thefiles' and pick sites one at a time manually, then run th
 i <- 1
 while(!is.null(i)){
   data.file <- thefiles[i]
-  site<- gsub("AIR_", "", data.file)
+  site <- gsub("AIR_", "", data.file)
   site <- gsub("_.*","", site)
   cat(site, "\n")
   
@@ -101,6 +110,11 @@ while(!is.null(i)){
     if(!is.na(newfile2keep)[1]) dat <- get.complete.year(oldfile2keep, newfile2keep, first.year, numdailyobs, date.begin, date.end)
     if(is.na(newfile2keep)[1]) dat <- clip.single.file(oldfile2keep, first.year, numdailyobs, date.begin, date.end)
   }
+  
+  # Check to see if tail needs to be clipped (if downloaded in office)
+  tail(dat[!is.na(dat$Temp),])
+  dat <- clean.recovery(dat)
+  tail(dat[!is.na(dat$Temp),])
   
   # Save
   write.csv(dat, paste0(data.dir, "/", cleaned.data.folder, "/", site, ".csv"), row.names = F)
