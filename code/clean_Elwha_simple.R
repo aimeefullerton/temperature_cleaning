@@ -5,27 +5,27 @@ library(readxl)
 
 # Load functions
 numdailyobs <- 24
+clock_24h <- T
 source("code/cleaning_functions.R")
 
 # Directories
-first.year <- 2021
+first.year <- 2022
 date.begin <- "-10-01"
 date.end <- "-11-30"
-data.dir <- "/Users/aimeefullerton/GitHub/Elwha_ST/data"
-raw.data.folder <- paste0(first.year + 1, "/data.raw")
+root.dir <- gsub("temperature_cleaning", "", getwd())
+data.dir <- paste0(root.dir, "Elwha_ST/data")
+raw.data.folder <- paste0(first.year + 1, "/January 2023")
 cleaned.data.folder <- paste0(first.year + 1, "/data.cleaned")
 if(!dir.exists(paste0(data.dir, "/", cleaned.data.folder))){
-  dir.create(paste0(data.dir, "/Data_Cleaned_", (first.year + 1)), showWarnings = F)
   dir.create(paste0(data.dir, "/", cleaned.data.folder), showWarnings = F)
 }
 thefiles <- dir(paste0(data.dir, "/", raw.data.folder))
-sites.attr <- read.csv(paste0(data.dir, "/elwha.sites.attributed.csv"), header = T)
-xx <- sites.attr$FW_Code; names(xx) <- sites.attr$SiteCode; xx <- xx[xx!=""]
-thefiles <- dir(paste0(data.dir, "/", raw.data.folder))
+#sites.attr <- read.csv(paste0(data.dir, "/elwha.sites.attributed.csv"), header = T)
+#xx <- sites.attr$FW_Code; names(xx) <- sites.attr$SiteCode; xx <- xx[xx!=""]
 
 
 thefiles
-i <- 8 # Look at 'thefiles' and pick sites one by one manually
+i <- 9 # Look at 'thefiles' and pick sites one by one manually
 
 while(!is.null(i)){
   data.file <- thefiles[i]
@@ -53,6 +53,13 @@ while(!is.null(i)){
   
   # Ensure the whole time series is filled out (even if some temperatures are NAs)
   #dat <- fill.time.series(dat, first.year, date.begin, date.end, numdailyobs)
+  
+  # Round up to nearest hour if needed in case logger wasn't deployed on the hour!
+  date_list <- sapply(dat$DateTime, function(x) round.timestamp(x))
+  #date_list <- sapply(dat$DateTime, function(x) round.POSIXt(x, "hours")) #same result, but much slower
+  dat$DateTime <- do.call("c", date_list)
+  dat$Time <- dat$DateTime$hour
+  
   
   write.csv(dat, paste0(data.dir, "/", cleaned.data.folder, "/", site, ".csv"), row.names = F)
   cat(paste0("All done with ", site, "!"), "\n")
