@@ -1,5 +1,5 @@
 # Functions for cleaning temperature data from loggers
-# Aimee H Fullerton, Last updated 22 September 2021
+# Aimee H Fullerton, Last updated 30 Jan 2023
 # Adapted from Colin Sowder's original functions
 
 # Get number of observations per day
@@ -7,7 +7,9 @@ numdailyobs <- get("numdailyobs")
 
 detect.date.format <- function(testdate)
 {
+  clock_24h <- get("clock_24h")
   date.format <- NULL
+  
   a <- substr(as.POSIXlt(testdate, origin = "1970-01-01", format = "%m/%d/%Y"), 1, 2)
   if(is.na(a)) a <- substr(as.POSIXlt(testdate, origin = "1970-01-01", format = "%Y-%m-%d"), 1, 4)
   a <- as.numeric(a)
@@ -16,13 +18,29 @@ detect.date.format <- function(testdate)
     if(a < 19) date.format <- "%m/%d/%y" 
     if(a > 19 & a < 1900) date.format <- "%m/%d/%Y"
   }
+  
+  if(nchar(testdate) > 14){
+    if(clock_24h == T){
+      date.format = paste(date.format, "%H:%M:%S")
+    } else {
+      date.format = paste(date.format, "%I:%M:%S %p")
+    }
+  }
+  
+  if(nchar(testdate) >=12 & nchar(testdate) <= 14){
+    if(clock_24h == T){
+      date.format = paste(date.format, "%H:%M")
+    } else {
+      date.format = paste(date.format, "%I:%M %p")
+    }
+  }
+
   return(date.format)
 }
 
 # Read in and prepare file; flexible format
-prepare.file <- function(data.file, directory, numdailyobs = 24)
+prepare.file <- function(data.file, directory)
 {
-  
   worked <- NULL
   worked <- tryCatch(
     read.csv(paste0(directory, "/", data.file)), 
@@ -39,8 +57,6 @@ prepare.file <- function(data.file, directory, numdailyobs = 24)
     td <- read.csv(paste0(directory, "/", data.file), skip = 1, header = T, stringsAsFactors = F)[,2:3]
     colnames(td) = c("DateTime","Temp")
     date.format <- detect.date.format(td$DateTime[1])
-      if(nchar(td[1,1]) > 14) date.format = paste(date.format, "%I:%M:%S %p")
-      if(nchar(td[1,1]) <= 14) date.format = paste(date.format, "%H:%M")
     td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = date.format)
     td$Date <- as.Date(td$Date)
     td$Time <- td$DateTime$hour
@@ -66,13 +82,13 @@ prepare.file <- function(data.file, directory, numdailyobs = 24)
 }
 
 # Read in and prepare file saved as MS Excel (ie MX bluetooth loggers)
-prepare.xls.file <- function(data.file, directory, numdailyobs = 24)
+prepare.xls.file <- function(data.file, directory)
 {
-  
   td <- read_xlsx(paste0(data.dir, "/", raw.data.folder, "/", data.file))[,c(2:3)]
   colnames(td) = c("DateTime","Temp")
+  
   date.format <- detect.date.format(td$DateTime[1])
-  td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = date.format, tz = "PST")
+  td$DateTime <- as.POSIXlt(td$DateTime, origin = "1970-01-01", format = date.format, tz = Sys.timezone(location = TRUE)) #tz = "PST")
   td$Date <- as.Date(td$DateTime)
   td$Time <- td$DateTime$hour
   td <- td[!is.na(td$DateTime),]
@@ -83,10 +99,31 @@ prepare.xls.file <- function(data.file, directory, numdailyobs = 24)
   return(td)
 }
 
+# Round timestamp (if it wasn't launched on the hour)
+# see also round.POSIXt() - same result but much slower
+round.timestamp <- function(testdate){
+  
+  date <- strsplit(as.character(testdate), " ")[[1]][1]
+  time <- strsplit(as.character(testdate), " ")[[1]][2]
+  hour <- as.numeric(strsplit(time, ":")[[1]][1])
+  min <- as.numeric(strsplit(time, ":")[[1]][2])
+  sec <- as.numeric(strsplit(time, ":")[[1]][3])
+  
+  if(sec/60 < 0.5) {sec <- 0}
+  if(min/60 < 0.5) {min <- 0}
+  if(sec/60 >= 0.5) {min <- min + 1; sec <- 0}
+  if(min/60 >= 0.5) {hour <- hour + 1; min <- 0}
+  
+  newdate <- as.POSIXlt(paste0(date, " ", hour, ":00:00"), format = "%Y-%m-%d %H:%M:%S")
+
+  return(newdate)
+  
+}
+
 # Plot time series
 plot.logger <- function(logger, type = "l")
 {
-  plot(logger$Date, logger$Temp, xlab = "Date", ylab = "Temperature (C)", type = type, cex = 0.3)
+  plot(logger$DateTime, logger$Temp, xlab = "Date", ylab = "Temperature (C)", type = type, cex = 0.3)
 }
 
 # Do some automated checking
@@ -265,7 +302,7 @@ clip.single.file <- function(myfile, first.year, numdailyobs, date.begin = "-09-
   
   # Plot and print diagnostics
   if(echo == T){
-    plot(file2keep$Date, file2keep$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
+    plot(file2keep$DateTime, file2keep$Temp, type = 'l', ylab = "Temperature (C)", xlab = "Date")
     print(summary(file2keep[!is.na(file2keep$Temp),]))
     cat("number of records: ", nrow(file2keep), "\n")
     cat("number of obs: ", nrow(file2keep[!is.na(file2keep$Temp),]), "\n")
@@ -969,7 +1006,7 @@ for(s in 1:length(thesites)){
   dat.all.merged[idx, site] <- dat.yy[,site]
 }
 #summary(dat.all.merged)
-#plot(dat.all.merged$Date, dat.all.merged[,3], type = 'l')
+#plot(dat.all.merged$DateTime, dat.all.merged[,3], type = 'l')
 
 # sort
 new.df <- dat.all.merged[order(dat.all.merged$Date, dat.all.merged$Time),]
@@ -982,7 +1019,7 @@ png(paste0(data.dir, "/", watershed, ".", type, ".allyears_", yy, ".png"), width
 par(mfrow = c(6,8), las = 1, cex = 0.5)
 
 for(i in 3:(ncol(dat.all.merged))){
-  plot(dat.all.merged$Date, dat.all.merged[,i], type = 'l', ylim = ylm, main = colnames(dat.all.merged)[i], xlab = "", ylab = "")
+  plot(dat.all.merged$DateTime, dat.all.merged[,i], type = 'l', ylim = ylm, main = colnames(dat.all.merged)[i], xlab = "", ylab = "")
 }
 dev.off()  
 
