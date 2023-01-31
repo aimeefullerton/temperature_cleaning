@@ -84,7 +84,7 @@ prepare.file <- function(data.file, directory)
 # Read in and prepare file saved as MS Excel (ie MX bluetooth loggers)
 prepare.xls.file <- function(data.file, directory)
 {
-  td <- read_xlsx(paste0(data.dir, "/", raw.data.folder, "/", data.file))[,c(2:3)]
+  td <- read_xlsx::read_xlsx(paste0(data.dir, "/", raw.data.folder, "/", data.file))[,c(2:3)]
   colnames(td) = c("DateTime","Temp")
   
   date.format <- detect.date.format(td$DateTime[1])
