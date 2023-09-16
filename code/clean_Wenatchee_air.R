@@ -1,5 +1,5 @@
 # Stitch together complete air temperature records
-# Aimee H Fullerton, 1 November 2022
+# Aimee H Fullerton, 15 September 2023
 
 # NOTE: If loggers were launched at random times and not on the hour, this may come in handy:
 #dat$DateTime <- lubridate::round_date(dat$DateTime, unit = "hour", "%H") This date issue is really problematic!
@@ -7,12 +7,13 @@
 # SETUP ####
 # Load functions
 numdailyobs <- 24
+clock_24h <- F #date formatted with AM/PM. This script assumes this but attempts to detect the date format.
 source("code/cleaning_functions.R")
 
 # Directories
 watershed <- "wenatchee"
 date.begin <- "-09-01"
-date.end <- "-08-31"
+date.end <- "-09-10"
 data.dir1 <- "/Users/aimeefullerton/OneDrive/Work/Research/ST_Wenatchee"
 data.dir2 <-  "NOAA-USFS" #"WDFW"
 data.dir <- paste0(data.dir1, "/", data.dir2)
@@ -20,7 +21,7 @@ data.type <- "air"
 
 # CHOOSE An OPTION: 
 # 1. Setup for back-filling the beginning of the current year's time series back to Sep 1 if loggers were downloaded after Sep started
-first.year <- 2021
+first.year <- 2022
 raw.data.folder <- paste0("Data_Raw_Sep", (first.year + 1), "/", data.type)
 old.data.folder <- paste0("Data_Raw_Sep", first.year, "/", data.type)
 cleaned.data.folder <- paste0("Data_Cleaned_", (first.year + 1), "/", data.type)
@@ -34,12 +35,12 @@ oldfiles <- toupper(oldfiles); thefiles <- toupper(thefiles)
 
 # 2. Setup for back-filling the end of the previous year's time series through Aug 31 if loggers were downloaded before the end of Aug
 # First, check if last year needs any backfilling:
-first.year <- 2021
+first.year <- 2022
 last_year_data <- read.csv(paste0(data.dir, "/Data_Cleaned_", first.year, "/", watershed, ".at.", first.year, ".csv"))
 range(last_year_data$DateTime)
 tail(last_year_data)
 #If so, proceed:
-first.year <- 2020
+first.year <- 2021
 raw.data.folder <- paste0("Data_Raw_Sep", (first.year + 2), "/", data.type)
 old.data.folder <- paste0("Data_Cleaned_", (first.year + 1), "/", data.type)
 cleaned.data.folder <- paste0("Data_Cleaned_", (first.year + 1), "/", data.type)
@@ -65,7 +66,7 @@ while(!is.null(i)){
   # Read in and prepare data from previous year at this site
   if(length(old.loggers) > 0){
     for(j in 1:length(old.loggers)){
-      td <- prepare.file(data.file = old.loggers[j], directory = paste0(data.dir, "/", old.data.folder), numdailyobs = numdailyobs)
+      td <- prepare.file(data.file = old.loggers[j], directory = paste0(data.dir, "/", old.data.folder))
       old.list <- c(old.list, paste0(site, ".", j))
       assign(paste0(site, ".", j), td)
     }
@@ -73,7 +74,7 @@ while(!is.null(i)){
   
   # Read in and prepare data from current year at this site
   for(j in 1:length(new.loggers)){
-    td <- prepare.file(data.file = new.loggers[j], directory = paste0(data.dir, "/", raw.data.folder), numdailyobs = numdailyobs)
+    td <- prepare.file(data.file = new.loggers[j], directory = paste0(data.dir, "/", raw.data.folder))
     new.list <- c(new.list, paste0(site, ".", j + length(old.loggers)))
     assign(paste0(site, ".", j + length(old.loggers)), td)
   }
@@ -121,6 +122,7 @@ while(!is.null(i)){
   rm(list = old.list); rm(list = new.list); rm(td, dat, newfile2keep, oldfile2keep)
   i <- NULL
   cat(paste0("All done with ", site, "!"), "\n")
+  print(thefiles)
 }
 
 # Create a matrix of this year's data and plot each site's time series individually ####
