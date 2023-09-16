@@ -64,6 +64,7 @@ prepare.file <- function(data.file, directory)
     #  evens <- seq(2, length(td$Time),2)
     #  td$Time[evens] <- td$Time[evens] + 0.5
     #}
+    if(max(td$Temp, na.rm = T) > 45) td$Temp <- (td$Temp - 32) * 5/9 #convert F to C
   }
   
   #pre-processed files
@@ -1005,8 +1006,9 @@ for(s in 1:length(thesites)){
   site <- thesites[s]
   dat.all.merged[idx, site] <- dat.yy[,site]
 }
+dat.all.merged <- dat.all.merged[!is.na(dat.all.merged$Date),]
 #summary(dat.all.merged)
-#plot(dat.all.merged$DateTime, dat.all.merged[,3], type = 'l')
+#plot(dat.all.merged$Date, dat.all.merged[,3], type = 'l')
 
 # sort
 new.df <- dat.all.merged[order(dat.all.merged$Date, dat.all.merged$Time),]
@@ -1019,7 +1021,8 @@ png(paste0(data.dir, "/", watershed, ".", type, ".allyears_", yy, ".png"), width
 par(mfrow = c(6,8), las = 1, cex = 0.5)
 
 for(i in 3:(ncol(dat.all.merged))){
-  plot(dat.all.merged$DateTime, dat.all.merged[,i], type = 'l', ylim = ylm, main = colnames(dat.all.merged)[i], xlab = "", ylab = "")
+  plot(dat.all.merged$Date, dat.all.merged[,i], type = 'l', ylim = ylm, main = colnames(dat.all.merged)[i], xlab = "", ylab = "")
+  # or use $DateTime if the field is available for finer plotting
 }
 dev.off()  
 
